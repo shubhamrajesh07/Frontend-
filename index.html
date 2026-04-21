@@ -1681,6 +1681,9 @@ body.offline-mode #lock-screen{ padding-top:38px; }
       <div class="set-section-title" style="margin-top:14px;">🎨 Appearance</div>
       <div class="set-card" id="settings-appearance-card"></div>
 
+      <div class="set-section-title" style="margin-top:14px;">👤 Account</div>
+      <div class="set-card" id="settings-account-card"></div>
+
       <div class="set-section-title" style="margin-top:14px;">🗑 Danger Zone</div>
       <div class="set-card" id="settings-danger-card"></div>
 
@@ -6883,12 +6886,122 @@ function checkStorageHealth(){
 
     logout() {
       if (!confirm('Log out? Your tasks remain on the server.')) return;
+      if (typeof API !== 'undefined' && Tok.has()) API.fetch('/auth/logout', { method: 'POST' }).catch(() => {});
       Tok.clear();
       window.__ofsOfflineMode = false;
       const lb = document.getElementById('ofs-logout-btn'); if (lb) lb.remove();
       if (typeof window.toast === 'function') window.toast('👋 Logged out.');
       setTimeout(() => Auth.show(), 600);
     },
+  };
+
+  /* ── Account Modal (Change Password / Change Email) ─────────────────────── */
+  window.showAccountModal = function(mode) {
+    const existing = document.getElementById('account-action-modal');
+    if (existing) existing.remove();
+
+    const isPass  = mode === 'change-password';
+    const overlay = document.createElement('div');
+    overlay.id = 'account-action-modal';
+    overlay.className = 'mo open';
+    overlay.style.cssText = 'z-index:600;';
+
+    const box = document.createElement('div');
+    box.className = 'modal';
+    box.style.cssText = 'max-width:360px;';
+
+    const title = document.createElement('div');
+    title.className = 'mtit';
+    title.textContent = isPass ? '🔑 Change Password' : '📧 Change Email';
+
+    const msg = document.createElement('div');
+    msg.id = 'acc-modal-msg';
+    msg.style.cssText = 'font-size:12px;color:#d13438;margin-bottom:8px;min-height:18px;text-align:center;';
+
+    function makeField(placeholder, type) {
+      const inp = document.createElement('input');
+      inp.type = type || 'text';
+      inp.placeholder = placeholder;
+      inp.style.cssText = 'width:100%;padding:10px 12px;border:1px solid var(--bdr);border-radius:8px;font-size:14px;background:var(--inp);color:var(--t1);margin-bottom:10px;font-family:inherit;outline:none;box-sizing:border-box;';
+      return inp;
+    }
+
+    let f1, f2, f3;
+    if (isPass) {
+      f1 = makeField('Current password', 'password');
+      f2 = makeField('New password (min 8 chars)', 'password');
+      f3 = makeField('Confirm new password', 'password');
+      box.appendChild(title); box.appendChild(msg);
+      box.appendChild(f1); box.appendChild(f2); box.appendChild(f3);
+    } else {
+      f1 = makeField('Current password', 'password');
+      f2 = makeField('New email address', 'email');
+      box.appendChild(title); box.appendChild(msg);
+      box.appendChild(f1); box.appendChild(f2);
+    }
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:10px;margin-top:6px;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'ghostb';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'flex:1;';
+    cancelBtn.addEventListener('click', () => overlay.remove());
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btnp';
+    saveBtn.textContent = 'Save';
+    saveBtn.style.cssText = 'flex:2;';
+
+    saveBtn.addEventListener('click', async () => {
+      msg.textContent = '';
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+
+      try {
+        if (isPass) {
+          const cur = f1.value.trim(), np = f2.value.trim(), cp = f3.value.trim();
+          if (!cur)        { msg.textContent = 'Enter your current password.'; return; }
+          if (np.length < 8){ msg.textContent = 'New password must be at least 8 characters.'; return; }
+          if (np !== cp)   { msg.textContent = 'New passwords do not match.'; return; }
+          const { ok, data } = await API.fetch('/auth/change-password', {
+            method: 'PUT',
+            body: JSON.stringify({ currentPassword: cur, newPassword: np }),
+          });
+          if (!ok) { msg.textContent = data.message || 'Failed. Try again.'; return; }
+          if (typeof window.toast === 'function') window.toast('✅ Password changed successfully!');
+          overlay.remove();
+        } else {
+          const pass = f1.value.trim(), newEmail = f2.value.trim();
+          if (!pass)      { msg.textContent = 'Enter your current password.'; return; }
+          if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { msg.textContent = 'Enter a valid email address.'; return; }
+          // Use login to verify current password, then update profile
+          const { ok, data } = await API.fetch('/auth/update-email', {
+            method: 'PUT',
+            body: JSON.stringify({ password: pass, newEmail }),
+          });
+          if (!ok) { msg.textContent = data.message || 'Failed. Try again.'; return; }
+          if (typeof window.toast === 'function') window.toast('✅ Email updated successfully!');
+          // Update local profile display
+          if (window.userProfile) window.userProfile.email = newEmail;
+          const ue = document.getElementById('sidebar-uemail'); if (ue) ue.textContent = newEmail;
+          overlay.remove();
+        }
+      } catch(e) {
+        msg.textContent = 'Network error. Check connection.';
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+      }
+    });
+
+    btnRow.appendChild(cancelBtn); btnRow.appendChild(saveBtn);
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+    setTimeout(() => f1 && f1.focus(), 100);
   };
 
   /* ─── WRAP APP FUNCTIONS (intercept mutations) ──────────────────────────── */
@@ -7489,6 +7602,94 @@ function checkStorageHealth(){
         tog.appendChild(inp); tog.appendChild(slider);
         row.appendChild(info); row.appendChild(tog);
         ac.appendChild(row);
+      }
+
+      /* ── Account card ──────────────────────────────────────────────── */
+      const accCard = el('settings-account-card');
+      if (accCard) {
+        accCard.innerHTML = '';
+
+        const isLoggedIn = typeof Tok !== 'undefined' && Tok.has();
+
+        // Helper: make a settings row with button
+        function makeAccRow(icon, label, sub, btnText, btnColor, onClick) {
+          const row = document.createElement('div');
+          row.className = 'set-row';
+          row.style.marginBottom = '10px';
+          const info = document.createElement('div'); info.className = 'set-info';
+          const lbl = document.createElement('div'); lbl.className = 'set-lbl'; lbl.textContent = icon + ' ' + label;
+          const subEl = document.createElement('div'); subEl.className = 'set-sub'; subEl.textContent = sub;
+          info.appendChild(lbl); info.appendChild(subEl);
+          const btn = document.createElement('button');
+          btn.className = 'btn';
+          btn.style.cssText = `font-size:12px;padding:5px 12px;background:${btnColor};color:#fff;border:none;flex-shrink:0;border-radius:6px;cursor:pointer;`;
+          btn.textContent = btnText;
+          btn.addEventListener('click', onClick);
+          row.appendChild(info); row.appendChild(btn);
+          accCard.appendChild(row);
+        }
+
+        if (isLoggedIn) {
+          // Logged-in user info row
+          const infoRow = document.createElement('div');
+          infoRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 2px;margin-bottom:10px;border-bottom:1px solid var(--bdr);';
+          const ava = document.createElement('div');
+          ava.style.cssText = 'width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;';
+          const uname = (window.userProfile && window.userProfile.name) || 'User';
+          ava.textContent = uname.charAt(0).toUpperCase();
+          const uinfo = document.createElement('div');
+          const unEl = document.createElement('div'); unEl.style.cssText = 'font-size:13px;font-weight:700;color:var(--t1);'; unEl.textContent = uname;
+          const ueEl = document.createElement('div'); ueEl.style.cssText = 'font-size:11px;color:var(--tm);'; ueEl.textContent = (window.userProfile && window.userProfile.email) || '';
+          uinfo.appendChild(unEl); uinfo.appendChild(ueEl);
+          infoRow.appendChild(ava); infoRow.appendChild(uinfo);
+          accCard.appendChild(infoRow);
+
+          // Change Password
+          makeAccRow('🔑', 'Change Password', 'Update your account password', 'Change', 'var(--blue)', () => {
+            closeSettingsModal();
+            setTimeout(() => showAccountModal('change-password'), 300);
+          });
+
+          // Change Email
+          makeAccRow('📧', 'Change Email', 'Update your login email address', 'Change', 'var(--blue)', () => {
+            closeSettingsModal();
+            setTimeout(() => showAccountModal('change-email'), 300);
+          });
+
+          // Logout
+          makeAccRow('🚪', 'Sign Out', 'Log out from this device', 'Sign Out', '#d13438', () => {
+            closeSettingsModal();
+            setTimeout(() => {
+              if (confirm('Sign out? Your tasks remain safely on the server.')) {
+                // Call backend logout to revoke token
+                if (typeof API !== 'undefined' && typeof Tok !== 'undefined' && Tok.has()) {
+                  API.fetch('/auth/logout', { method: 'POST' }).catch(() => {});
+                }
+                if (typeof Tok !== 'undefined') Tok.clear();
+                window.__ofsOfflineMode = false;
+                const lb = document.getElementById('ofs-logout-btn'); if (lb) lb.remove();
+                if (typeof window.toast === 'function') window.toast('👋 Signed out successfully.');
+                setTimeout(() => { if (typeof Auth !== 'undefined') Auth.show(); }, 600);
+              }
+            }, 100);
+          });
+
+        } else {
+          // Not logged in
+          const offRow = document.createElement('div');
+          offRow.className = 'set-row';
+          const info = document.createElement('div'); info.className = 'set-info';
+          const lbl = document.createElement('div'); lbl.className = 'set-lbl'; lbl.textContent = '🔐 Not signed in';
+          const sub = document.createElement('div'); sub.className = 'set-sub'; sub.textContent = 'Sign in to sync tasks across devices';
+          info.appendChild(lbl); info.appendChild(sub);
+          const btn = document.createElement('button');
+          btn.className = 'btn btnp';
+          btn.style.cssText = 'font-size:12px;padding:5px 12px;flex-shrink:0;';
+          btn.textContent = 'Sign In';
+          btn.addEventListener('click', () => { closeSettingsModal(); setTimeout(() => { if (typeof Auth !== 'undefined') Auth.show(); }, 300); });
+          offRow.appendChild(info); offRow.appendChild(btn);
+          accCard.appendChild(offRow);
+        }
       }
 
       /* Danger zone card */
