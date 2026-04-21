@@ -4407,36 +4407,36 @@ function loadSettings(){
   }catch(e){}
 }
 function saveSettings(){
-  const g = (id) => { const el=document.getElementById(id); return el||{}; };
   appSettings={
-    reminders:          g('set-reminders').checked||false,
-    dueAlerts:          g('set-due-alerts').checked||false,
-    overdueEscalation:  g('set-overdue').checked||false,
-    smartNotif:         g('set-smart').checked||false,
-    streakAlerts:       g('set-streak').checked||false,
-    prodTimeAlert:      g('set-prodtime').checked||false,
-    smartTime:          g('set-smart-time').value||'20:00',
-    funnyNotif:         g('set-funny').checked||false,
-    motivational:       g('set-motive').checked||false,
-    highPriorityAlerts: g('set-highpri').checked||false,
-    cooldown:           parseInt(g('set-cooldown').value)||30,
+    reminders:document.getElementById('set-reminders').checked,
+    dueAlerts:document.getElementById('set-due-alerts').checked,
+    overdueEscalation:document.getElementById('set-overdue').checked,
+    smartNotif:document.getElementById('set-smart').checked,
+    streakAlerts:document.getElementById('set-streak').checked,
+    prodTimeAlert:document.getElementById('set-prodtime').checked,
+    smartTime:document.getElementById('set-smart-time').value||'20:00',
+    funnyNotif:document.getElementById('set-funny').checked,
+    motivational:document.getElementById('set-motive').checked,
+    highPriorityAlerts:document.getElementById('set-highpri').checked,
+    cooldown:parseInt(document.getElementById('set-cooldown').value)||30
   };
-  }
+  localStorage.setItem(SK_SETTINGS,JSON.stringify(appSettings));
+  rescheduleAllSmartNotifs();
+  toast('⚙️ Settings saved!');
+}
 function applySettingsToUI(){
-  const s = (id) => document.getElementById(id);
-  if(s('set-reminders'))  s('set-reminders').checked  = appSettings.reminders;
-  if(s('set-due-alerts')) s('set-due-alerts').checked = appSettings.dueAlerts;
-  if(s('set-overdue'))    s('set-overdue').checked    = appSettings.overdueEscalation;
-  if(s('set-smart'))      s('set-smart').checked      = appSettings.smartNotif;
-  if(s('set-streak'))     s('set-streak').checked     = appSettings.streakAlerts;
-  if(s('set-prodtime'))   s('set-prodtime').checked   = appSettings.prodTimeAlert;
-  if(s('set-smart-time')) s('set-smart-time').value   = appSettings.smartTime||'20:00';
-  if(s('set-funny'))      s('set-funny').checked      = appSettings.funnyNotif;
-  if(s('set-motive'))     s('set-motive').checked     = appSettings.motivational;
-  if(s('set-highpri'))    s('set-highpri').checked    = appSettings.highPriorityAlerts;
-  if(s('set-cooldown'))   s('set-cooldown').value     = String(appSettings.cooldown||30);
-  };
-  }
+  document.getElementById('set-reminders').checked=appSettings.reminders;
+  document.getElementById('set-due-alerts').checked=appSettings.dueAlerts;
+  document.getElementById('set-overdue').checked=appSettings.overdueEscalation;
+  document.getElementById('set-smart').checked=appSettings.smartNotif;
+  document.getElementById('set-streak').checked=appSettings.streakAlerts;
+  document.getElementById('set-prodtime').checked=appSettings.prodTimeAlert;
+  document.getElementById('set-smart-time').value=appSettings.smartTime||'20:00';
+  document.getElementById('set-funny').checked=appSettings.funnyNotif;
+  document.getElementById('set-motive').checked=appSettings.motivational;
+  document.getElementById('set-highpri').checked=appSettings.highPriorityAlerts;
+  document.getElementById('set-cooldown').value=String(appSettings.cooldown||30);
+}
 
 function openSettingsModal(){
   applySettingsToUI();
@@ -4479,6 +4479,7 @@ function renderSettingsRemList(){
   }
 }
 function closeSettingsModal(){ document.getElementById('settings-modal').classList.remove('open'); }
+document.getElementById('settings-modal').addEventListener('click',function(e){ if(e.target===this) closeSettingsModal(); });
 
 function updatePermCard(){
   const card=document.getElementById('set-perm-card');
