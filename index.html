@@ -9,7 +9,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="no-referrer">
 <!-- CSP: unsafe-inline required for single-file HTML; nonce-based CSP recommended when served from a dedicated server -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https: https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
 <!-- PWA / Android -->
@@ -6183,7 +6183,7 @@ function checkStorageHealth(){
    ██                                                                      ██
    ██       BACKEND INTEGRATION SYSTEM  v3.0                              ██
    ██       Render backend: todo-backend-tl1v.onrender.com                ██
-   ██       Endpoints: /api/auth/register|login  /api/todos               ██
+   ██       Endpoints: /api/auth/signup|login    /api/tasks               ██
    ██       Offline-first, IndexedDB queue, conflict resolution           ██
    ██                                                                      ██
    ██████████████████████████████████████████████████████████████████████████
@@ -6330,7 +6330,12 @@ function checkStorageHealth(){
       if (Tok.has()) headers['Authorization'] = 'Bearer ' + Tok.get();
       let res;
       try {
-        res = await fetch(API_BASE + path, { ...opts, headers, signal: opts.signal });
+        // Render free tier can take up to 50s to cold-start — use 65s timeout
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), 65000);
+        const signal     = opts.signal || controller.signal;
+        res = await fetch(API_BASE + path, { ...opts, headers, signal });
+        clearTimeout(timeoutId);
       } catch (netErr) {
         const e = new Error('Network error: ' + netErr.message);
         e.isNetworkError = true;
@@ -6351,9 +6356,9 @@ function checkStorageHealth(){
     login(email, pass) {
       return this.fetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
     },
-    // POST /api/auth/register
+    // POST /api/auth/signup
     register(name, email, pass) {
-      return this.fetch('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password: pass }) });
+      return this.fetch('/auth/signup', { method: 'POST', body: JSON.stringify({ name, email, password: pass }) });
     },
     // Verify token — try /auth/me, fall back to GET /todos
     async getMe() {
@@ -6361,36 +6366,36 @@ function checkStorageHealth(){
         const r = await this.fetch('/auth/me');
         if (r.status !== 404) return r;
       } catch(_) {}
-      const r = await this.fetch('/todos');
+      const r = await this.fetch('/tasks');
       return { ok: r.ok, status: r.status, data: { user: null } };
     },
 
-    // GET /api/todos
-    getTodos()           { return this.fetch('/todos'); },
-    // POST /api/todos
-    createTodo(t)        { return this.fetch('/todos',      { method: 'POST',   body: JSON.stringify(t) }); },
-    // PUT /api/todos/:id
-    updateTodo(id, body) { return this.fetch('/todos/' + id, { method: 'PUT',    body: JSON.stringify(body) }); },
-    // DELETE /api/todos/:id
-    deleteTodo(id)       { return this.fetch('/todos/' + id, { method: 'DELETE' }); },
+    // GET /api/tasks
+    getTasks()           { return this.fetch('/tasks'); },
+    // POST /api/tasks
+    createTask(t)        { return this.fetch('/tasks',      { method: 'POST',   body: JSON.stringify(t) }); },
+    // PUT /api/tasks/:id
+    updateTask(id, body) { return this.fetch('/tasks/' + id, { method: 'PUT',    body: JSON.stringify(body) }); },
+    // DELETE /api/tasks/:id
+    deleteTask(id)       { return this.fetch('/tasks/' + id, { method: 'DELETE' }); },
 
-    // Bulk upsert — try /todos/sync, fall back to individual requests
+    // Bulk upsert — try /tasks/sync, fall back to individual requests
     async bulkUpsert(todos) {
       try {
-        const r = await this.fetch('/todos/sync', { method: 'POST', body: JSON.stringify({ todos }) });
+        const r = await this.fetch('/tasks/sync', { method: 'POST', body: JSON.stringify({ tasks: todos }) });
         if (r.status !== 404 && r.status !== 405) return r;
       } catch(_) {}
       const results = [];
       for (const todo of todos) {
         try {
           let r;
-          if (todo._serverId && typeof todo._serverId === 'string' && todo._serverId.length === 24) {
-            r = await this.updateTodo(todo._serverId, todo);
-            if (!r.ok) r = await this.createTodo(todo);
+          if ((todo._id || todo._serverId) && typeof (todo._id || todo._serverId) === 'string' && (todo._id || todo._serverId).length === 24) {
+            r = await this.updateTask(todo._id || todo._serverId, todo);
+            if (!r.ok) r = await this.createTask(todo);
           } else {
-            r = await this.createTodo(todo);
+            r = await this.createTask(todo);
           }
-          if (r.ok && (r.data.todo || r.data)) results.push(r.data.todo || r.data);
+          if (r.ok && (r.data.task || r.data.todo || r.data)) results.push(r.data.task || r.data.todo || r.data);
         } catch(_) {}
       }
       return { ok: true, data: { todos: results } };
@@ -6399,11 +6404,11 @@ function checkStorageHealth(){
     // Delete all completed todos
     async deleteAllCompleted() {
       try {
-        const r = await this.fetch('/todos', { method: 'DELETE' });
+        const r = await this.fetch('/tasks', { method: 'DELETE' });
         if (r.status !== 404 && r.status !== 405) return r;
       } catch(_) {}
-      const done = (window.tasks || []).filter(t => t.done && t._serverId);
-      for (const t of done) { try { await this.deleteTodo(t._serverId); } catch(_) {} }
+      const done = (window.tasks || []).filter(t => t.done && (t._id || t._serverId));
+      for (const t of done) { try { await this.deleteTask(t._id || t._serverId); } catch(_) {} }
       return { ok: true, data: {} };
     },
   };
@@ -6451,7 +6456,7 @@ function checkStorageHealth(){
               try {
                 const { ok, data } = await API.bulkUpsert(batch);
                 if (ok) {
-                  const returned = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
+                  const returned = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.todos) ? data.todos : [];
                   this._applyServerTasks(returned);
                   toUpsert.forEach(o => doneQids.push(...o.qids));
                 } else { allSucceeded = false; }
@@ -6464,7 +6469,7 @@ function checkStorageHealth(){
           try {
             const serverId = op.payload && op.payload._serverId;
             if (serverId) {
-              const { ok } = await API.deleteTodo(serverId);
+              const { ok } = await API.deleteTask(serverId);
               if (ok || op.payload?._notFoundOk) doneQids.push(...op.qids); else allSucceeded = false;
             } else { doneQids.push(...op.qids); }
           } catch(e) { allSucceeded = false; console.warn('[Sync] delete failed:', e); }
@@ -6506,9 +6511,9 @@ function checkStorageHealth(){
 
     async _pullMerge() {
       try {
-        const { ok, data } = await API.getTodos();
+        const { ok, data } = await API.getTasks();
         if (!ok) return;
-        const serverTodos = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
+        const serverTodos = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.todos) ? data.todos : [];
         Merge.applyConflict(serverTodos);
         if (typeof window.saveAll === 'function') window.saveAll();
         if (typeof window.render  === 'function') window.render();
@@ -6578,7 +6583,8 @@ function checkStorageHealth(){
     localToApi(t) {
       return {
         localId:      t.id,
-        _serverId:    t._serverId || undefined,
+        _id:          t._id || t._serverId || undefined,
+        _serverId:    t._id || t._serverId || undefined,
         text:         String(t.text || '').substring(0, 500),
         title:        String(t.text || '').substring(0, 500),
         done:         !!t.done,
@@ -6700,6 +6706,13 @@ function checkStorageHealth(){
       if (document.getElementById('ofs-auth-overlay')) return;
       const overlay = document.createElement('div');
       overlay.id = 'ofs-auth-overlay';
+      // Pre-warm the Render server in the background (free tier cold-start ~30-50s)
+      // By the time the user fills in the form, the server will be ready
+      (async function warmServer() {
+        try {
+          await fetch(API_BASE + '/health', { method: 'GET', signal: AbortSignal.timeout(60000) });
+        } catch(_) { /* silent — just a warm-up */ }
+      })();
       overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:linear-gradient(160deg,#0a1628 0%,#0e2347 50%,#0a1628 100%);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s ease;';
 
       const card = document.createElement('div');
@@ -6793,7 +6806,7 @@ function checkStorageHealth(){
       const pass  = (document.getElementById('ofs-pass')?.value  || '').trim();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.msg('Please enter a valid email address.'); return; }
       if (!pass  || pass.length < 6) { this.msg('Password must be at least 6 characters.'); return; }
-      this.msg('Signing in…', 'var(--tm)');
+      this.msg('Signing in… (if server is sleeping, first request may take ~30s)', 'var(--tm)');
       this._setFormBusy(true);
       try {
         const { ok, data } = await API.login(email, pass);
@@ -6806,7 +6819,7 @@ function checkStorageHealth(){
         Auth.hide();
         Controller.postLogin(user);
       } catch(e) {
-        this.msg(e.isNetworkError ? 'Cannot reach server. Check connection or continue offline.' : 'Login error. Please try again.');
+        this.msg(e.isNetworkError ? 'Server is waking up (Render cold start). Please wait 30s and try again, or continue offline.' : 'Login error. Please try again.');
         console.warn('[Auth] login error:', e);
       } finally { this._setFormBusy(false); }
     },
@@ -6818,7 +6831,7 @@ function checkStorageHealth(){
       if (!name  || name.length  < 2) { this.msg('Please enter your name (min 2 chars).'); return; }
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))   { this.msg('Please enter a valid email address.'); return; }
       if (!pass  || pass.length  < 8) { this.msg('Password must be at least 8 characters.'); return; }
-      this.msg('Creating account…', 'var(--tm)');
+      this.msg('Creating account… (server may take ~30s to wake on first request)', 'var(--tm)');
       this._setFormBusy(true);
       try {
         const { ok, data } = await API.register(name, email, pass);
@@ -6831,7 +6844,7 @@ function checkStorageHealth(){
         Auth.hide();
         Controller.postSignup(user);
       } catch(e) {
-        this.msg(e.isNetworkError ? 'Cannot reach server. Check connection or continue offline.' : 'Registration error. Please try again.');
+        this.msg(e.isNetworkError ? 'Server is waking up (Render cold start). Please wait 30s and try again, or continue offline.' : 'Registration error. Please try again.');
         console.warn('[Auth] signup error:', e);
       } finally { this._setFormBusy(false); }
     },
