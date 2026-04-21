@@ -8,8 +8,8 @@
 <!-- Security headers via meta -->
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="no-referrer">
-<!-- CSP: strict — no unsafe-inline. Nonce-based CSP recommended when served from a server. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.render.com https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<!-- CSP: unsafe-inline required for single-file HTML; nonce-based CSP recommended when served from a dedicated server -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
 <!-- PWA / Android -->
@@ -1817,32 +1817,15 @@ body.offline-mode #lock-screen{ padding-top:38px; }
 <script>
 /* ═══════════════════════════════════════════════════════════
    ⚙️ PRODUCTION CONFIGURATION
-   Set API_URL to your Render backend URL before deploying
 ═══════════════════════════════════════════════════════════ */
 const CONFIG = {
-  // ← Replace with your Render backend URL in production
-  // e.g. 'https://mytodo-backend.onrender.com'
-  API_URL: (function(){
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:5000';
-    // Auto-detect: if served from Netlify, point to Render URL from meta tag if present
-    const meta = document.querySelector('meta[name="api-url"]');
-    return meta ? meta.content : 'https://todo-backend-tl1v.onrender.com';
-  })(),
+  API_URL: 'https://todo-backend-tl1v.onrender.com',
   MAX_TASK_LEN:   500,
   MAX_NOTES_LEN:  1000,
   DEBOUNCE_MS:    180,
 };
-
-/* ═══════════════════════════════════════
-   ⚙️ CONFIGURATION — Change API_URL for production
-═══════════════════════════════════════ */
-const CONFIG = {
-  API_URL: 'http://localhost:5000',
-  MAX_TASK_LEN: 500,
-  MAX_NOTES_LEN: 1000,
-  DEBOUNCE_MS: 180,
-};
+/* Convenience alias used by OfflineFirstSystem */
+const API_URL = CONFIG.API_URL;
 
 /* ═══════════════════════════════════════
    STORAGE KEYS
@@ -1982,23 +1965,47 @@ async function checkTamper(){
 }
 function showTamperWarning(){
   if(document.getElementById('tamper-overlay')) return;
-  const div=document.createElement('div');
-  div.id='tamper-overlay';
-  div.className='tamper-overlay';
-  div.innerHTML=`<div class="tamper-box">
-    <div style="font-size:44px;margin-bottom:12px">⚠️</div>
-    <div style="font-size:18px;font-weight:800;color:#d13438;margin-bottom:8px">Data Tampering Detected!</div>
-    <div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6">
-      Your app data has been modified outside the app.<br>
-      This could cause data corruption or loss of your tasks and streaks.<br><br>
-      <b>What do you want to do?</b>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button class="btn btnp" onclick="dismissTamper()">Keep Current Data</button>
-      <button class="btn btno" onclick="resetTamper()">Reset App Data</button>
-    </div>
-  </div>`;
-  document.body.appendChild(div);
+  const overlay=document.createElement('div');
+  overlay.id='tamper-overlay';
+  overlay.className='tamper-overlay';
+
+  const box=document.createElement('div');
+  box.className='tamper-box';
+
+  const icon=document.createElement('div');
+  icon.style.cssText='font-size:44px;margin-bottom:12px';
+  icon.textContent='⚠️';
+
+  const title=document.createElement('div');
+  title.style.cssText='font-size:18px;font-weight:800;color:#d13438;margin-bottom:8px';
+  title.textContent='Data Tampering Detected!';
+
+  const desc=document.createElement('div');
+  desc.style.cssText='font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.6';
+  desc.textContent='Your app data has been modified outside the app. This could cause data corruption or loss of your tasks and streaks.';
+  const br1=document.createElement('br');
+  const br2=document.createElement('br');
+  const bold=document.createElement('b');
+  bold.textContent='What do you want to do?';
+  desc.appendChild(br1); desc.appendChild(br2); desc.appendChild(bold);
+
+  const btns=document.createElement('div');
+  btns.style.cssText='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;';
+
+  const keepBtn=document.createElement('button');
+  keepBtn.className='btn btnp';
+  keepBtn.textContent='Keep Current Data';
+  keepBtn.addEventListener('click',()=>{ if(typeof dismissTamper==='function') dismissTamper(); });
+
+  const resetBtn=document.createElement('button');
+  resetBtn.className='btn btno';
+  resetBtn.textContent='Reset App Data';
+  resetBtn.addEventListener('click',()=>{ if(typeof resetTamper==='function') resetTamper(); });
+
+  btns.appendChild(keepBtn); btns.appendChild(resetBtn);
+  box.appendChild(icon); box.appendChild(title); box.appendChild(desc); box.appendChild(btns);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 function dismissTamper(){ const el=document.getElementById('tamper-overlay'); if(el) el.remove(); saveSig(); toast('⚠️ Signature updated. Monitor carefully.'); }
 function resetTamper(){ if(confirm('This will clear ALL data. Are you sure?')){ Object.values(SK).forEach(k=>localStorage.removeItem(k)); [SK_LOCK, SK_HMAC_KEY, SK_BRUTE].forEach(k=>localStorage.removeItem(k)); location.reload(); } }
@@ -2218,13 +2225,13 @@ function getStreakBanner(){
 }
 
 function getMostIgnoredBanner(){
-  // Find task with most overdue days + not done (most ignored)
   const td=todayStr();
   const ignored=tasks.filter(t=>!t.done&&t.due&&t.due<td).sort((a,b)=>a.due.localeCompare(b.due));
   if(!ignored.length) return '';
   const t=ignored[0];
   const daysAgo=Math.round((new Date(td)-new Date(t.due))/86400000);
-  return `<div class="ignored-banner" onclick="pinAndHighlight(${t.id})">
+  // Use data-action attribute instead of inline onclick — event delegation in render() handles this
+  return `<div class="ignored-banner" data-action="pin-highlight" data-task-id="${t.id}" style="cursor:pointer">
     <span style="font-size:20px">⚠️</span>
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:700;color:var(--t1)">Most Ignored: ${esc(t.text.substring(0,35))}${t.text.length>35?'…':''}</div>
@@ -2324,26 +2331,69 @@ function closeSB(){ document.getElementById('sidebar').classList.remove('open');
 /* ═══ SIDEBAR RENDER ═══ */
 function renderSB(){
   const el=document.getElementById('custom-lists');
-  if(!el) return; // guard: element may not be in DOM yet
-  el.innerHTML=customLists.map(l=>{
+  if(!el) return;
+  el.textContent=''; // clear safely
+
+  customLists.forEach(l=>{
     const ia=currentList===l.id;
     const cnt=tasks.filter(t=>(t.list===l.id||t.cat===l.id)&&!t.done).length;
-    return `<div class="ni lni ${ia?'active':''}" id="nav-${l.id}" onclick="setList('${l.id}')" oncontextmenu="openCtx(event,'${l.id}')">
-      <span class="icon">${l.icon}</span>
-      <span class="ll" id="ll-${l.id}">${esc(l.name)}</span>
-      <div class="lia" onclick="event.stopPropagation()">
-        <button class="lab" onclick="startRename(event,'${l.id}')" title="Rename">✏️</button>
-        <button class="lab" onclick="openEditLM(event,'${l.id}')" title="Edit">🎨</button>
-        <button class="lab" style="color:#d13438" onclick="delList(event,'${l.id}')" title="Delete">🗑</button>
-      </div>
-      ${cnt>0?`<span class="badge" style="background:${l.color};margin-left:2px">${cnt}</span>`:''}
-    </div>`;
-  }).join('');
+
+    const row=document.createElement('div');
+    row.className='ni lni'+(ia?' active':'');
+    row.id='nav-'+l.id;
+    row.setAttribute('role','button');
+    row.setAttribute('tabindex','0');
+    row.addEventListener('click',()=>setList(l.id));
+    row.addEventListener('contextmenu',e=>openCtx(e,l.id));
+    row.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setList(l.id); } });
+
+    const iconSpan=document.createElement('span');
+    iconSpan.className='icon';
+    iconSpan.textContent=l.icon;
+
+    const nameSpan=document.createElement('span');
+    nameSpan.className='ll';
+    nameSpan.id='ll-'+l.id;
+    nameSpan.textContent=l.name;
+
+    const actions=document.createElement('div');
+    actions.className='lia';
+    actions.addEventListener('click',e=>e.stopPropagation());
+
+    const renameBtn=document.createElement('button');
+    renameBtn.className='lab'; renameBtn.title='Rename'; renameBtn.textContent='✏️';
+    renameBtn.addEventListener('click',e=>startRename(e,l.id));
+
+    const editBtn=document.createElement('button');
+    editBtn.className='lab'; editBtn.title='Edit'; editBtn.textContent='🎨';
+    editBtn.addEventListener('click',e=>openEditLM(e,l.id));
+
+    const delBtn=document.createElement('button');
+    delBtn.className='lab'; delBtn.title='Delete'; delBtn.style.color='#d13438'; delBtn.textContent='🗑';
+    delBtn.addEventListener('click',e=>delList(e,l.id));
+
+    actions.appendChild(renameBtn); actions.appendChild(editBtn); actions.appendChild(delBtn);
+
+    row.appendChild(iconSpan);
+    row.appendChild(nameSpan);
+    row.appendChild(actions);
+
+    if(cnt>0){
+      const badge=document.createElement('span');
+      badge.className='badge';
+      badge.style.cssText='background:'+l.color+';margin-left:2px';
+      badge.textContent=cnt;
+      row.appendChild(badge);
+    }
+
+    el.appendChild(row);
+  });
+
   ['__myday','__important','__planned','__all'].forEach(id=>{
-    const e=document.getElementById('nav-'+id); if(e) e.classList.toggle('active',currentList===id);
+    const e2=document.getElementById('nav-'+id);
+    if(e2) e2.classList.toggle('active',currentList===id);
   });
   updateBadges();
-  // Update notification status (elements may not exist in new compact footer)
   const permIcon=document.getElementById('notif-perm-icon');
   if(permIcon) permIcon.textContent=getNotifStatusIcon();
 }
@@ -2514,6 +2564,11 @@ function render(){
   }
   /* Batch write — single innerHTML assignment minimizes reflows */
   container.innerHTML=html;
+  /* Delegate click on ignored-banner [data-action="pin-highlight"] */
+  container.querySelectorAll('[data-action="pin-highlight"]').forEach(el=>{
+    const tid=parseInt(el.dataset.taskId,10);
+    if(tid) el.addEventListener('click',()=>pinAndHighlight(tid),{once:true});
+  });
   /* Update task checkbox keyboard handlers after render */
   container.querySelectorAll('.tck').forEach(el=>{
     el.addEventListener('keydown',ev=>{
@@ -2731,20 +2786,64 @@ function onQAInput(val){
   const dd=document.getElementById('ac-dropdown');
   if(!suggs.length||!val.trim()){dd.classList.remove('open');dd.innerHTML='';return;}
   const listObj=id=>customLists.find(l=>l.id===id);
-  dd.innerHTML='<div class="ac-header">Suggestions — Press Space to complete</div>'+suggs.map((s,i)=>{
+
+  // Build autocomplete items safely — store text in data-text, delegation handles click
+  dd.innerHTML='';
+  const header=document.createElement('div');
+  header.className='ac-header';
+  header.textContent='Suggestions — Press Space to complete';
+  dd.appendChild(header);
+
+  suggs.forEach((s,i)=>{
     const lo=s.task&&(listObj(s.task.cat)||listObj(s.task.list));
     const catLabel=lo?`${lo.icon} ${lo.name}`:'';
     const priLabel=s.task?{high:'🔴 High',medium:'🟡 Med',low:'🟢 Low'}[s.task.priority]:'';
-    return `<div class="ac-item" data-idx="${i}" data-text="${esc(s.text)}" onclick="acPick('${esc(s.text).replace(/'/g,"\\'")}')">
-      <div class="ac-item-icon">${s.task?'📋':'🔁'}</div>
-      <div class="ac-item-body">
-        <div class="ac-item-text">${s.highlighted}</div>
-        ${catLabel||priLabel?`<div class="ac-item-meta">${catLabel}${catLabel&&priLabel?' · ':''}${priLabel}</div>`:''}
-      </div>
-      ${s.freq>1?`<div class="ac-freq">×${s.freq}</div>`:''}
-      <div class="ac-item-hint">Space</div>
-    </div>`;
-  }).join('');
+
+    const item=document.createElement('div');
+    item.className='ac-item';
+    item.dataset.idx=i;
+    item.dataset.text=s.text; // safe: stored in dataset, never injected as HTML
+
+    const iconDiv=document.createElement('div');
+    iconDiv.className='ac-item-icon';
+    iconDiv.textContent=s.task?'📋':'🔁';
+
+    const bodyDiv=document.createElement('div');
+    bodyDiv.className='ac-item-body';
+
+    // highlighted uses esc()-wrapped HTML — safe to set as innerHTML
+    const textDiv=document.createElement('div');
+    textDiv.className='ac-item-text';
+    textDiv.innerHTML=s.highlighted; // already esc()-processed in fuzzyMatch
+
+    bodyDiv.appendChild(textDiv);
+
+    if(catLabel||priLabel){
+      const metaDiv=document.createElement('div');
+      metaDiv.className='ac-item-meta';
+      metaDiv.textContent=(catLabel+(catLabel&&priLabel?' · ':'')+priLabel);
+      bodyDiv.appendChild(metaDiv);
+    }
+
+    item.appendChild(iconDiv);
+    item.appendChild(bodyDiv);
+
+    if(s.freq>1){
+      const freqDiv=document.createElement('div');
+      freqDiv.className='ac-freq';
+      freqDiv.textContent='×'+s.freq;
+      item.appendChild(freqDiv);
+    }
+
+    const hintDiv=document.createElement('div');
+    hintDiv.className='ac-item-hint';
+    hintDiv.textContent='Space';
+    item.appendChild(hintDiv);
+
+    // Click handled by event delegation in patchDynamicRenderers (ac-dropdown listener)
+    dd.appendChild(item);
+  });
+
   dd.classList.add('open');
 }
 
@@ -3729,22 +3828,54 @@ function buildExpChecklist(){
     el.appendChild(msg);
     return;
   }
-  el.innerHTML=records.map(r=>{
+
+  // Build checklist items using safe DOM — no onclick with r.key interpolation
+  el.textContent='';
+  records.forEach(r=>{
     const pct=r.pct||0;
     const col=pct>=80?'#107c10':pct>=50?'#0078d4':'#d83b01';
     const lbl=expType==='daily'?r.label:(expType==='weekly'?formatWLabel(r.label):formatMLabel(r.label));
     const fire=pct>=80?'🔥 ':'';
     const todayMark=r.isToday?' ⭐':'';
-    return `<div class="exp-check-item" id="expci-${r.key}" onclick="toggleExpSel('${r.key}')">
-      <input type="checkbox" id="expchk-${r.key}" onchange="toggleExpSel('${r.key}')" onclick="event.stopPropagation()">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:12px;color:var(--t1)">${fire}${lbl}${todayMark}</div>
-        <div style="font-size:10px;color:var(--tm)">${r.totalDone||0}/${r.totalDue||0} tasks${r.totalDue===0?' (no tasks)':''}</div>
-      </div>
-      <div class="exp-check-pct" style="background:${col}22;color:${col}">${r.totalDue>0?pct+'%':'—'}</div>
-    </div>`;
-  }).join('');
-}
+
+    const item=document.createElement('div');
+    item.className='exp-check-item';
+    item.id='expci-'+r.key;
+    // Store key in dataset for delegation — r.key is an internal date/week string, not user input
+    item.dataset.expkey=r.key;
+    item.addEventListener('click',()=>toggleExpSel(r.key));
+
+    const chk=document.createElement('input');
+    chk.type='checkbox';
+    chk.id='expchk-'+r.key;
+    chk.addEventListener('change',()=>toggleExpSel(r.key));
+    chk.addEventListener('click',e=>e.stopPropagation());
+
+    const body=document.createElement('div');
+    body.style.cssText='flex:1;min-width:0';
+
+    const titleDiv=document.createElement('div');
+    titleDiv.style.cssText='font-weight:700;font-size:12px;color:var(--t1)';
+    titleDiv.textContent=fire+lbl+todayMark;
+
+    const subDiv=document.createElement('div');
+    subDiv.style.cssText='font-size:10px;color:var(--tm)';
+    subDiv.textContent=(r.totalDone||0)+'/'+(r.totalDue||0)+' tasks'+(r.totalDue===0?' (no tasks)':'');
+
+    body.appendChild(titleDiv);
+    body.appendChild(subDiv);
+
+    const pctBadge=document.createElement('div');
+    pctBadge.className='exp-check-pct';
+    pctBadge.style.cssText='background:'+col+'22;color:'+col;
+    pctBadge.textContent=r.totalDue>0?pct+'%':'—';
+
+    item.appendChild(chk);
+    item.appendChild(body);
+    item.appendChild(pctBadge);
+    el.appendChild(item);
+  });
+} // end buildExpChecklist
 
 function toggleExpSel(key){
   if(expSelected.has(key)) expSelected.delete(key);
@@ -4174,14 +4305,31 @@ function _generatePDF(){
   </div>
   </body></html>`;
 
-  // Open in new window and trigger print
-  const win=window.open('','_blank','width=900,height=700');
-  if(!win){ toast('⚠️ Allow popups to download PDF'); return; }
-  win.document.open();
-  win.document.write(pdfHtml);
-  win.document.close();
-  win.onload=()=>{ win.focus(); win.print(); };
-  toast('📄 PDF opened! Use browser Print → Save as PDF');
+  // Open in new window using Blob URL — avoids document.write (safer, works in all modern browsers)
+  try {
+    const blob = new Blob([pdfHtml], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, '_blank', 'width=900,height=700');
+    if (!win) {
+      URL.revokeObjectURL(blobUrl);
+      toast('⚠️ Allow popups to download PDF');
+      return;
+    }
+    // Auto-revoke after the window has had a chance to load
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    win.addEventListener('load', () => { win.focus(); win.print(); }, { once: true });
+    toast('📄 PDF opened! Use browser Print → Save as PDF');
+  } catch(e) {
+    console.error('[PDF] Blob URL failed, trying fallback:', e);
+    // Fallback for very old browsers
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { toast('⚠️ Allow popups to download PDF'); return; }
+    win.document.open();
+    win.document.write(pdfHtml);  // fallback only — pdfHtml is pre-escaped with pe()
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+    toast('📄 PDF opened! Use browser Print → Save as PDF');
+  }
 }
 
 /* ── CSV Export ── */
@@ -6018,11 +6166,15 @@ function checkStorageHealth(){
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
    ██████████████████████████████████████████████████████████████████████████
    ██                                                                      ██
-   ██          OFFLINE-FIRST + AUTO-SYNC SYSTEM  v2.0                     ██
-   ██          Full dual-storage, conflict resolution,                     ██
-   ██          background sync, IndexedDB queue, XSS-safe                  ██
+   ██       BACKEND INTEGRATION SYSTEM  v3.0                              ██
+   ██       Render backend: todo-backend-tl1v.onrender.com                ██
+   ██       Endpoints: /api/auth/register|login  /api/todos               ██
+   ██       Offline-first, IndexedDB queue, conflict resolution           ██
    ██                                                                      ██
    ██████████████████████████████████████████████████████████████████████████
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -6031,59 +6183,58 @@ function checkStorageHealth(){
   'use strict';
 
   /* ─── CONFIG ────────────────────────────────────────────────────────────── */
-  const API_BASE     = (window.CONFIG && window.CONFIG.API_URL ? window.CONFIG.API_URL : 'http://localhost:5000') + '/api';   // ← set CONFIG.API_URL in config section
-  const IDB_NAME     = 'mytodo_offline_v1';
-  const IDB_VER      = 1;
-  const SYNC_RETRY_MS = 5000;   // retry failed syncs after 5 s
-  const SYNC_INTERVAL_MS = 30000; // background sync heartbeat (30 s)
-  const MAX_BATCH    = 50;       // max tasks per sync batch
+  const API_BASE        = CONFIG.API_URL + '/api';
+  const IDB_NAME        = 'mytodo_offline_v1';
+  const IDB_VER         = 1;
+  const SYNC_RETRY_MS   = 5000;
+  const SYNC_INTERVAL_MS = 30000;
+  const MAX_BATCH       = 50;
 
-  /* ─── TOKEN STORE (memory → survives page lifetime, XSS-safe) ───────────── */
+  /* ─── TOKEN STORE ─────────────────────────────────────────────────────── */
   const Tok = {
     _v: null,
-    get()  { return this._v || (this._v = localStorage.getItem('__mytodo_jwt_v2')); },
-    set(t) { this._v = t; try { localStorage.setItem('__mytodo_jwt_v2', t); } catch(_) {} },
-    clear(){ this._v = null; try { localStorage.removeItem('__mytodo_jwt_v2'); } catch(_) {} },
-    has()  { return !!this.get(); },
+    get()   { return this._v || (this._v = localStorage.getItem('__mytodo_jwt_v2')); },
+    set(t)  { this._v = t;    try { localStorage.setItem('__mytodo_jwt_v2', t); }   catch(_) {} },
+    clear() { this._v = null; try { localStorage.removeItem('__mytodo_jwt_v2'); }  catch(_) {} },
+    has()   { return !!this.get(); },
   };
 
-  /* ─── ONLINE STATE ──────────────────────────────────────────────────────── */
+  /* ─── NETWORK STATE ─────────────────────────────────────────────────────── */
   const Net = {
     _online: navigator.onLine,
     _listeners: [],
     get online() { return this._online; },
-    on(fn) { this._listeners.push(fn); },
+    on(fn)  { this._listeners.push(fn); },
     _emit() { this._listeners.forEach(fn => fn(this._online)); },
-    init() {
+    init()  {
       window.addEventListener('online',  () => { this._online = true;  this._emit(); });
       window.addEventListener('offline', () => { this._online = false; this._emit(); });
     },
   };
 
-  /* ─── XSS SANITIZER (reuse app's esc if available, else fallback) ───────── */
+  /* ─── INPUT SANITIZER ───────────────────────────────────────────────────── */
   function sanitizeStr(s) {
     if (typeof window.esc === 'function') return window.esc(s);
     return String(s == null ? '' : s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
       .replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
   }
-  function sanitizeTask(t) {
+  function sanitizeTodo(t) {
     return {
       ...t,
-      text:  sanitizeStr(t.text  || '').substring(0, 500),
-      notes: sanitizeStr(t.notes || '').substring(0, 1000),
+      text:     sanitizeStr(t.text  || '').substring(0, 500),
+      notes:    sanitizeStr(t.notes || '').substring(0, 1000),
       priority: ['high','medium','low'].includes(t.priority) ? t.priority : 'medium',
     };
   }
-  function validateTask(t) {
+  function validateTodo(t) {
     if (!t || typeof t !== 'object') return false;
-    if (!t.id || !t.text || typeof t.text !== 'string' || !t.text.trim()) return false;
-    if (t.due && !/^\d{4}-\d{2}-\d{2}$/.test(t.due) && t.due !== '') return false;
+    if (!t.text || typeof t.text !== 'string' || !t.text.trim()) return false;
+    if (t.due && t.due !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(t.due)) return false;
     return true;
   }
 
   /* ─── INDEXEDDB SYNC QUEUE ──────────────────────────────────────────────── */
-  // Stores pending operations {op:'upsert'|'delete', taskId, payload, ts}
   const IDB = {
     db: null,
     async open() {
@@ -6102,15 +6253,6 @@ function checkStorageHealth(){
         };
         req.onsuccess = e => { this.db = e.target.result; res(this.db); };
         req.onerror   = () => rej(req.error);
-      });
-    },
-    async tx(stores, mode, fn) {
-      const db = await this.open();
-      return new Promise((res, rej) => {
-        const tx   = db.transaction(stores, mode);
-        const result = fn(tx);
-        tx.oncomplete = () => res(result);
-        tx.onerror    = () => rej(tx.error);
       });
     },
     async enqueue(op, taskId, payload) {
@@ -6144,11 +6286,11 @@ function checkStorageHealth(){
     },
     async getQueueCount() {
       await this.open();
-      return new Promise((res, rej) => {
+      return new Promise((res) => {
         const tx  = this.db.transaction('queue', 'readonly');
         const req = tx.objectStore('queue').count();
         req.onsuccess = () => res(req.result || 0);
-        req.onerror   = () => { res(0); };
+        req.onerror   = () => res(0);
       });
     },
     async setMeta(key, value) {
@@ -6162,153 +6304,181 @@ function checkStorageHealth(){
     },
     async getMeta(key) {
       await this.open();
-      return new Promise((res, rej) => {
+      return new Promise((res) => {
         const tx  = this.db.transaction('meta', 'readonly');
         const req = tx.objectStore('meta').get(key);
         req.onsuccess = () => res(req.result ? req.result.value : null);
-        req.onerror   = () => { res(null); };
+        req.onerror   = () => res(null);
       });
     },
   };
 
-  /* ─── API CLIENT ────────────────────────────────────────────────────────── */
+  /* ─── API CLIENT — exact Render backend endpoints ──────────────────────── */
   const API = {
     async fetch(path, opts = {}) {
       const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
       if (Tok.has()) headers['Authorization'] = 'Bearer ' + Tok.get();
-      const res = await fetch(API_BASE + path, { ...opts, headers, signal: opts.signal });
+      let res;
+      try {
+        res = await fetch(API_BASE + path, { ...opts, headers, signal: opts.signal });
+      } catch (netErr) {
+        const e = new Error('Network error: ' + netErr.message);
+        e.isNetworkError = true;
+        throw e;
+      }
+      // Auto-logout on 401
+      if (res.status === 401) {
+        Tok.clear();
+        if (!document.getElementById('ofs-auth-overlay')) setTimeout(() => Auth.show(), 100);
+        return { ok: false, status: 401, data: { message: 'Session expired. Please log in again.' } };
+      }
       let data;
       try { data = await res.json(); } catch(_) { data = {}; }
       return { ok: res.ok, status: res.status, data };
     },
-    async getTasks()           { return this.fetch('/tasks'); },
-    async createTask(t)        { return this.fetch('/tasks', { method:'POST', body: JSON.stringify(t) }); },
-    async updateTask(id, body) { return this.fetch('/tasks/'+id, { method:'PUT',  body: JSON.stringify(body) }); },
-    async deleteTask(id)       { return this.fetch('/tasks/'+id, { method:'DELETE' }); },
-    async bulkSync(tasks)      { return this.fetch('/tasks/sync', { method:'POST', body: JSON.stringify({ tasks }) }); },
-    async deleteAllCompleted() { return this.fetch('/tasks', { method:'DELETE' }); },
-    async getMe()              { return this.fetch('/auth/me'); },
-    async login(email, pass)   { return this.fetch('/auth/login',  { method:'POST', body: JSON.stringify({ email, password: pass }) }); },
-    async signup(name, email, pass){ return this.fetch('/auth/signup', { method:'POST', body: JSON.stringify({ name, email, password: pass }) }); },
-  };
 
-  /* ─── SYNC STATE ────────────────────────────────────────────────────────── */
-  const Sync = {
-    _status: 'idle',  // 'idle'|'syncing'|'synced'|'pending'|'error'
-    _busy: false,
-    _pillTimer: null,
-    _failCount: 0,
-
-    setStatus(s) {
-      this._status = s;
-      UI.updateSyncPill(s);
+    // POST /api/auth/login
+    login(email, pass) {
+      return this.fetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
+    },
+    // POST /api/auth/register
+    register(name, email, pass) {
+      return this.fetch('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password: pass }) });
+    },
+    // Verify token — try /auth/me, fall back to GET /todos
+    async getMe() {
+      try {
+        const r = await this.fetch('/auth/me');
+        if (r.status !== 404) return r;
+      } catch(_) {}
+      const r = await this.fetch('/todos');
+      return { ok: r.ok, status: r.status, data: { user: null } };
     },
 
-    /* ── Mark task as needing sync ── */
+    // GET /api/todos
+    getTodos()           { return this.fetch('/todos'); },
+    // POST /api/todos
+    createTodo(t)        { return this.fetch('/todos',      { method: 'POST',   body: JSON.stringify(t) }); },
+    // PUT /api/todos/:id
+    updateTodo(id, body) { return this.fetch('/todos/' + id, { method: 'PUT',    body: JSON.stringify(body) }); },
+    // DELETE /api/todos/:id
+    deleteTodo(id)       { return this.fetch('/todos/' + id, { method: 'DELETE' }); },
+
+    // Bulk upsert — try /todos/sync, fall back to individual requests
+    async bulkUpsert(todos) {
+      try {
+        const r = await this.fetch('/todos/sync', { method: 'POST', body: JSON.stringify({ todos }) });
+        if (r.status !== 404 && r.status !== 405) return r;
+      } catch(_) {}
+      const results = [];
+      for (const todo of todos) {
+        try {
+          let r;
+          if (todo._serverId && typeof todo._serverId === 'string' && todo._serverId.length === 24) {
+            r = await this.updateTodo(todo._serverId, todo);
+            if (!r.ok) r = await this.createTodo(todo);
+          } else {
+            r = await this.createTodo(todo);
+          }
+          if (r.ok && (r.data.todo || r.data)) results.push(r.data.todo || r.data);
+        } catch(_) {}
+      }
+      return { ok: true, data: { todos: results } };
+    },
+
+    // Delete all completed todos
+    async deleteAllCompleted() {
+      try {
+        const r = await this.fetch('/todos', { method: 'DELETE' });
+        if (r.status !== 404 && r.status !== 405) return r;
+      } catch(_) {}
+      const done = (window.tasks || []).filter(t => t.done && t._serverId);
+      for (const t of done) { try { await this.deleteTodo(t._serverId); } catch(_) {} }
+      return { ok: true, data: {} };
+    },
+  };
+
+  /* ─── SYNC ENGINE ────────────────────────────────────────────────────────── */
+  const Sync = {
+    _status: 'idle',
+    _busy:   false,
+    _failCount: 0,
+
+    setStatus(s) { this._status = s; UI.updateSyncPill(s); },
+
     markDirty(taskId) {
-      // Update synced=false on the live task
       const t = window.tasks && window.tasks.find(t => t.id == taskId || t._syncId == taskId);
       if (t) t.synced = false;
       UI.updateTaskDot(taskId, 'pending');
       this.setStatus('pending');
     },
 
-    /* ── Main sync entry point – called on online restore ── */
     async syncAll() {
       if (this._busy) return;
       if (!Net.online || !Tok.has()) return;
       this._busy = true;
       this.setStatus('syncing');
-
       try {
         const pending = await IDB.getAllQueued();
         if (!pending.length) {
-          // No local ops — do a pull-merge to grab any server changes
           await this._pullMerge();
           this.setStatus('synced');
           this._failCount = 0;
           return;
         }
-
-        // Collapse ops: last write per taskId wins
         const collapsed = this._collapseOps(pending);
         const toDelete  = collapsed.filter(o => o.op === 'delete');
         const toUpsert  = collapsed.filter(o => o.op === 'upsert');
-
         let allSucceeded = true;
-        const doneQids   = [];
+        const doneQids  = [];
 
-        // ── Batch upsert ──
         if (toUpsert.length) {
-          const valid = toUpsert
-            .map(o => o.payload)
-            .filter(t => validateTask(t))
-            .map(sanitizeTask);
-
+          const valid = toUpsert.map(o => o.payload).filter(t => validateTodo(t)).map(sanitizeTodo);
           if (valid.length) {
             const batches = [];
-            for (let i = 0; i < valid.length; i += MAX_BATCH)
-              batches.push(valid.slice(i, i + MAX_BATCH));
-
+            for (let i = 0; i < valid.length; i += MAX_BATCH) batches.push(valid.slice(i, i + MAX_BATCH));
             for (const batch of batches) {
               try {
-                const { ok, data } = await API.bulkSync(batch);
-                if (ok && Array.isArray(data.tasks)) {
-                  // Merge returned tasks (server may have assigned new _ids)
-                  this._applyServerTasks(data.tasks);
+                const { ok, data } = await API.bulkUpsert(batch);
+                if (ok) {
+                  const returned = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
+                  this._applyServerTasks(returned);
                   toUpsert.forEach(o => doneQids.push(...o.qids));
-                } else {
-                  allSucceeded = false;
-                }
-              } catch(e) {
-                allSucceeded = false;
-                console.warn('[Sync] batch upsert failed:', e);
-              }
+                } else { allSucceeded = false; }
+              } catch(e) { allSucceeded = false; console.warn('[Sync] upsert batch failed:', e); }
             }
           }
         }
 
-        // ── Individual deletes ──
         for (const op of toDelete) {
           try {
-            const { ok } = await API.deleteTask(op.taskId);
-            if (ok || op.payload?._notFoundOk) doneQids.push(...op.qids);
-            else allSucceeded = false;
-          } catch(e) {
-            allSucceeded = false;
-            console.warn('[Sync] delete failed:', e);
-          }
+            const serverId = op.payload && op.payload._serverId;
+            if (serverId) {
+              const { ok } = await API.deleteTodo(serverId);
+              if (ok || op.payload?._notFoundOk) doneQids.push(...op.qids); else allSucceeded = false;
+            } else { doneQids.push(...op.qids); }
+          } catch(e) { allSucceeded = false; console.warn('[Sync] delete failed:', e); }
         }
 
-        // ── Dequeue processed ops ──
         if (doneQids.length) await IDB.dequeue(doneQids);
 
-        // Mark all tasks synced that are no longer in queue
         if (allSucceeded) {
-          this._markAllSynced();
-          this._failCount = 0;
-          this.setStatus('synced');
+          this._markAllSynced(); this._failCount = 0; this.setStatus('synced');
         } else {
           this._failCount++;
           this.setStatus('pending');
-          // Retry with back-off
           setTimeout(() => this.syncAll(), Math.min(SYNC_RETRY_MS * this._failCount, 60000));
         }
-
       } catch(e) {
         console.error('[Sync] syncAll error:', e);
         this._failCount++;
         this.setStatus('error');
-        if (typeof window.showError === 'function' && this._failCount === 1) {
-          window.showError('Sync failed — your changes are saved locally and will retry automatically.');
-        }
+        if (typeof window.showError === 'function' && this._failCount === 1)
+          window.showError('Sync failed — changes saved locally, will retry automatically.');
         setTimeout(() => this.syncAll(), SYNC_RETRY_MS);
-      } finally {
-        this._busy = false;
-      }
+      } finally { this._busy = false; }
     },
 
-    /* ── Collapse duplicate ops: for each taskId keep latest ── */
     _collapseOps(ops) {
       const map = new Map();
       for (const op of ops) {
@@ -6316,188 +6486,150 @@ function checkStorageHealth(){
         if (!map.has(key)) {
           map.set(key, { op: op.op, taskId: op.taskId, payload: op.payload, ts: op.ts, qids: [op.qid] });
         } else {
-          const existing = map.get(key);
-          existing.qids.push(op.qid);
-          if (op.ts > existing.ts) {
-            existing.op      = op.op;
-            existing.payload = op.payload;
-            existing.ts      = op.ts;
-          }
+          const ex = map.get(key);
+          ex.qids.push(op.qid);
+          if (op.ts > ex.ts) { ex.op = op.op; ex.payload = op.payload; ex.ts = op.ts; }
         }
       }
       return Array.from(map.values());
     },
 
-    /* ── Pull from server and merge with local (latest updatedAt wins) ── */
     async _pullMerge() {
       try {
-        const { ok, data } = await API.getTasks();
-        if (!ok || !Array.isArray(data.tasks)) return;
-        Merge.applyConflict(data.tasks);
-        window.saveAll();
-        window.render();
-      } catch(e) {
-        console.warn('[Sync] pullMerge failed:', e);
-      }
+        const { ok, data } = await API.getTodos();
+        if (!ok) return;
+        const serverTodos = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
+        Merge.applyConflict(serverTodos);
+        if (typeof window.saveAll === 'function') window.saveAll();
+        if (typeof window.render  === 'function') window.render();
+      } catch(e) { console.warn('[Sync] pullMerge failed:', e); }
     },
 
-    /* ── Apply server-returned tasks after bulk sync ── */
-    _applyServerTasks(serverTasks) {
+    _applyServerTasks(serverTodos) {
       if (!Array.isArray(window.tasks)) return;
-      serverTasks.forEach(st => {
-        const localIdx = window.tasks.findIndex(
-          lt => lt.id == st._id || lt.id == (st.id) || lt._syncId == (st._id || st.id)
-        );
+      serverTodos.forEach(st => {
+        const sid = st._id || st.id;
+        const localIdx = window.tasks.findIndex(lt => lt.id == sid || lt._serverId == sid || lt.id == st.localId);
         if (localIdx >= 0) {
-          // Update id to canonical server id, mark synced
-          window.tasks[localIdx] = {
-            ...window.tasks[localIdx],
-            ...Merge.mongoToLocal(st),
-            synced: true,
-          };
+          window.tasks[localIdx] = { ...window.tasks[localIdx], ...Merge.serverToLocal(st), synced: true };
           UI.updateTaskDot(window.tasks[localIdx].id, 'synced');
         }
       });
-      window.saveAll();
+      if (typeof window.saveAll === 'function') window.saveAll();
     },
 
-    /* ── Mark all live tasks as synced ── */
     _markAllSynced() {
       if (!Array.isArray(window.tasks)) return;
-      window.tasks.forEach(t => {
-        t.synced = true;
-        UI.updateTaskDot(t.id, 'synced');
-      });
-      window.saveAll();
+      window.tasks.forEach(t => { t.synced = true; UI.updateTaskDot(t.id, 'synced'); });
+      if (typeof window.saveAll === 'function') window.saveAll();
     },
 
-    /* ── Enqueue an upsert op (used by all create/update actions) ── */
     async enqueueUpsert(task) {
       if (!Tok.has()) return;
-      const safe = sanitizeTask(task);
-      if (!validateTask(safe)) return;
+      const safe = sanitizeTodo(task);
+      if (!validateTodo(safe)) return;
       await IDB.enqueue('upsert', String(task.id), safe);
       this.markDirty(task.id);
       UI.updateQueueBadge();
       if (Net.online) this.syncAll();
     },
 
-    /* ── Enqueue a delete op ── */
-    async enqueueDelete(taskId) {
-      if (!Tok.has()) return;
-      await IDB.enqueue('delete', String(taskId), { _notFoundOk: true });
+    async enqueueDelete(taskId, serverId) {
+      await IDB.enqueue('delete', String(taskId), { _serverId: serverId || null, _notFoundOk: true });
       UI.updateQueueBadge();
-      if (Net.online) this.syncAll();
+      if (Net.online && Tok.has()) this.syncAll();
     },
   };
 
   /* ─── MERGE ENGINE ──────────────────────────────────────────────────────── */
   const Merge = {
-    /* Convert MongoDB task doc to local format */
-    mongoToLocal(st) {
+    serverToLocal(st) {
       return {
-        id:          st._id || st.id,
-        text:        st.text        || '',
-        done:        !!st.done,
+        id:          st._id  || st.id  || Date.now(),
+        _serverId:   st._id  || st.id  || null,
+        text:        st.text || st.title || '',
+        done:        !!(st.done || st.completed || st.isDone),
         starred:     !!st.starred,
         pinned:      !!st.pinned,
-        priority:    st.priority    || 'medium',
-        due:         st.due         || '',
-        origDue:     st.origDue     || '',
-        cat:         st.cat         || '',
-        list:        st.list        || '__myday',
-        notes:       st.notes       || '',
-        reminderTime:st.reminderTime|| null,
-        completedAt: st.completedAt || null,
-        createdAt:   st.createdAt ? new Date(st.createdAt).getTime() : Date.now(),
-        updatedAt:   st.updatedAt ? new Date(st.updatedAt).getTime() : Date.now(),
+        priority:    ['high','medium','low'].includes(st.priority) ? st.priority : 'medium',
+        due:         st.due  || st.dueDate || '',
+        origDue:     st.origDue  || '',
+        cat:         st.cat  || st.category || '',
+        list:        st.list || '__myday',
+        notes:       st.notes || st.description || '',
+        reminderTime:st.reminderTime || null,
+        completedAt: st.completedAt  || null,
+        createdAt:   st.createdAt  ? new Date(st.createdAt).getTime()  : Date.now(),
+        updatedAt:   st.updatedAt  ? new Date(st.updatedAt).getTime()  : Date.now(),
         synced:      true,
       };
     },
-    /* Convert local task to API payload */
+
     localToApi(t) {
       return {
-        _id:          t.id,
-        text:         t.text,
+        localId:      t.id,
+        _serverId:    t._serverId || undefined,
+        text:         String(t.text || '').substring(0, 500),
+        title:        String(t.text || '').substring(0, 500),
         done:         !!t.done,
+        completed:    !!t.done,
         starred:      !!t.starred,
         pinned:       !!t.pinned,
-        priority:     t.priority    || 'medium',
-        due:          t.due         || '',
-        origDue:      t.origDue     || '',
-        cat:          t.cat         || '',
-        list:         t.list        || '__myday',
-        notes:        t.notes       || '',
-        reminderTime: t.reminderTime|| null,
-        completedAt:  t.completedAt || null,
-        updatedAt:    t.updatedAt   || Date.now(),
+        priority:     ['high','medium','low'].includes(t.priority) ? t.priority : 'medium',
+        due:          t.due     || '',
+        dueDate:      t.due     || '',
+        origDue:      t.origDue || '',
+        cat:          t.cat     || '',
+        category:     t.cat     || '',
+        list:         t.list    || '__myday',
+        notes:        String(t.notes || '').substring(0, 1000),
+        description:  String(t.notes || '').substring(0, 1000),
+        reminderTime: t.reminderTime || null,
+        completedAt:  t.completedAt  || null,
+        updatedAt:    t.updatedAt    || Date.now(),
       };
     },
-    /* "Latest updatedAt wins" conflict resolution */
-    applyConflict(serverTasks) {
-      if (!Array.isArray(window.tasks)) return;
-      const localMap  = new Map(window.tasks.map(t => [String(t.id), t]));
-      const serverMap = new Map(serverTasks.map(t => [String(t._id || t.id), t]));
 
-      // Server tasks: merge or add
+    applyConflict(serverTodos) {
+      if (!Array.isArray(window.tasks)) window.tasks = [];
+      const localMap  = new Map(window.tasks.map(t => [String(t._serverId || t.id), t]));
+      const serverMap = new Map(serverTodos.map(t => [String(t._id || t.id), t]));
+
       serverMap.forEach((st, sid) => {
-        const localTask = localMap.get(sid);
-        const stLocal   = this.mongoToLocal(st);
-
-        if (!localTask) {
-          // Server-only task: add locally
-          window.tasks.push(stLocal);
+        const local   = localMap.get(sid);
+        const stLocal = this.serverToLocal(st);
+        if (!local) {
+          const dupText = window.tasks.find(lt => !lt._serverId && lt.text === stLocal.text && !lt.synced);
+          if (dupText) { dupText._serverId = sid; dupText.synced = true; }
+          else window.tasks.push(stLocal);
         } else {
-          const localUpdated  = localTask.updatedAt  || localTask.createdAt || 0;
-          const serverUpdated = stLocal.updatedAt     || stLocal.createdAt  || 0;
-          if (serverUpdated > localUpdated) {
-            // Server wins
-            Object.assign(localTask, stLocal);
-            UI.showConflictToast(localTask.text, 'server');
-          } else if (localUpdated > serverUpdated && localTask.synced === false) {
-            // Local wins — already in queue, nothing to do
-          }
+          const lU = local.updatedAt || local.createdAt || 0;
+          const sU = stLocal.updatedAt || stLocal.createdAt || 0;
+          if (sU > lU) { Object.assign(local, stLocal); UI.showConflictToast(local.text, 'server'); }
         }
       });
 
-      // Local tasks not on server: keep them (they'll sync up on next push)
-      window.render();
+      if (typeof window.render === 'function') window.render();
     },
   };
 
-  /* ─── UI HELPERS ────────────────────────────────────────────────────────── */
+  /* ─── UI HELPERS ─────────────────────────────────────────────────────────── */
   const UI = {
-    /* ── Offline banner ── */
     showOfflineBanner(pendingCount) {
       let banner = document.getElementById('offline-banner');
       if (!banner) {
         banner = document.createElement('div');
         banner.id = 'offline-banner';
-        // Safe DOM construction — all static strings, no user data
-        const left = document.createElement('div');
-        left.className = 'ob-left';
-        const dot = document.createElement('div');
-        dot.className = 'ob-dot';
-        const msg = document.createElement('span');
-        msg.textContent = 'Offline mode — changes will sync when online';
-        const pending = document.createElement('span');
-        pending.className = 'ob-pending';
-        pending.id = 'ob-pending-count';
-        pending.style.display = 'none';
-        left.appendChild(dot);
-        left.appendChild(msg);
-        left.appendChild(pending);
-        const icon = document.createElement('span');
-        icon.style.cssText = 'font-size:11px;opacity:.75';
-        icon.textContent = '📴';
-        banner.appendChild(left);
-        banner.appendChild(icon);
+        const left = document.createElement('div'); left.className = 'ob-left';
+        const dot  = document.createElement('div'); dot.className  = 'ob-dot';
+        const txt  = document.createTextNode('Offline mode — changes will sync when online');
+        const pend = document.createElement('span'); pend.className = 'ob-pending'; pend.id = 'ob-pending-count'; pend.style.display = 'none';
+        left.appendChild(dot); left.appendChild(txt); left.appendChild(pend);
+        const icon = document.createElement('span'); icon.style.cssText = 'font-size:11px;opacity:.75'; icon.textContent = '📴';
+        banner.appendChild(left); banner.appendChild(icon);
         document.body.prepend(banner);
       }
-      requestAnimationFrame(() => {
-        banner.classList.add('visible');
-        document.body.classList.add('offline-mode');
-      });
+      requestAnimationFrame(() => { banner.classList.add('visible'); document.body.classList.add('offline-mode'); });
       this.updatePendingBadge(pendingCount);
     },
     hideOfflineBanner() {
@@ -6508,158 +6640,120 @@ function checkStorageHealth(){
     updatePendingBadge(count) {
       const el = document.getElementById('ob-pending-count');
       if (!el) return;
-      if (count > 0) { el.textContent = count + ' pending'; el.style.display = ''; }
-      else            { el.style.display = 'none'; }
+      if (count > 0) { el.textContent = count + ' pending'; el.style.display = ''; } else el.style.display = 'none';
     },
-
-    /* ── Sync pill ── */
     _pillTimer: null,
     updateSyncPill(status) {
       let pill = document.getElementById('sync-pill');
-      if (!pill) {
-        pill = document.createElement('div');
-        pill.id = 'sync-pill';
-        document.body.appendChild(pill);
-      }
-      pill.className = 'sync-pill';  // reset
+      if (!pill) { pill = document.createElement('div'); pill.id = 'sync-pill'; document.body.appendChild(pill); }
+      pill.className = 'sync-pill';
       clearTimeout(this._pillTimer);
-
       const cfg = {
-        syncing: { icon:'🔄', label:'Syncing…',          cls:'syncing' },
-        synced:  { icon:'✅', label:'Synced',             cls:'synced'  },
-        pending: { icon:'⏳', label:'Pending changes',   cls:'pending' },
-        error:   { icon:'⚠️', label:'Sync failed',       cls:'error'   },
-        idle:    { icon:'',   label:'',                  cls:''        },
+        syncing: { icon:'🔄', label:'Syncing…',        cls:'syncing' },
+        synced:  { icon:'✅', label:'Synced',           cls:'synced'  },
+        pending: { icon:'⏳', label:'Pending changes', cls:'pending' },
+        error:   { icon:'⚠️', label:'Sync failed',     cls:'error'   },
+        idle:    { icon:'',   label:'',                cls:''        },
       }[status] || { icon:'', label:'', cls:'' };
-
       if (!cfg.label) { pill.classList.remove('visible'); return; }
-
-      pill.className = `sync-pill visible ${cfg.cls}`;
-      // Safe DOM construction — cfg values come from trusted const map only
+      pill.className = 'sync-pill visible ' + cfg.cls;
       pill.textContent = '';
-      const iconSpan = document.createElement('span');
-      iconSpan.className = 'sp-icon';
-      iconSpan.textContent = cfg.icon;
-      const labelSpan = document.createElement('span');
-      labelSpan.textContent = cfg.label;
-      pill.appendChild(iconSpan);
-      pill.appendChild(labelSpan);
-
-      if (status === 'synced') {
-        this._pillTimer = setTimeout(() => {
-          pill.classList.remove('visible');
-        }, 3000);
-      }
+      const sp = document.createElement('span'); sp.className = 'sp-icon'; sp.textContent = cfg.icon;
+      pill.appendChild(sp); pill.appendChild(document.createTextNode(cfg.label));
+      if (status === 'synced') this._pillTimer = setTimeout(() => pill.classList.remove('visible'), 3000);
     },
-
-    /* ── Per-task sync dot (inside rendered task row) ── */
     updateTaskDot(taskId, state) {
       const dot = document.getElementById('tsync-' + taskId);
-      if (dot) {
-        dot.className = 'task-sync-dot ' + state;
-        dot.title = state === 'pending' ? 'Waiting to sync'
-                  : state === 'error'   ? 'Sync failed'
-                  : '';
-      }
+      if (dot) { dot.className = 'task-sync-dot ' + state; dot.title = state === 'pending' ? 'Waiting to sync' : state === 'error' ? 'Sync failed' : ''; }
     },
-
-    /* ── Queue badge on pending indicator ── */
-    async updateQueueBadge() {
-      const count = await IDB.getQueueCount();
-      this.updatePendingBadge(count);
-    },
-
-    /* ── Skeleton loading placeholders ── */
+    async updateQueueBadge() { const count = await IDB.getQueueCount(); this.updatePendingBadge(count); },
     showSkeletons(n = 3) {
       const el = document.getElementById('task-list');
       if (!el) return;
-      el.innerHTML = Array.from({ length: n }, () =>
-        '<div class="sync-skeleton"></div>'
-      ).join('');
+      el.innerHTML = Array.from({ length: n }, () => '<div class="sync-skeleton"></div>').join('');
     },
-    clearSkeletons() {
-      // render() is called after data loads, which replaces the skeletons
-    },
-
-    /* ── Conflict notification ── */
     showConflictToast(taskText, winner) {
       let ct = document.getElementById('conflict-toast');
-      if (!ct) {
-        ct = document.createElement('div');
-        ct.id = 'conflict-toast';
-        ct.className = 'conflict-toast';
-        document.body.appendChild(ct);
-      }
-      // Safe DOM construction — no innerHTML with user data
+      if (!ct) { ct = document.createElement('div'); ct.id = 'conflict-toast'; ct.className = 'conflict-toast'; document.body.appendChild(ct); }
       ct.textContent = '';
       const prefix = document.createTextNode('⚠️ Conflict resolved (');
-      const bold = document.createElement('b');
-      bold.textContent = (winner || 'server') + ' wins';
+      const bold   = document.createElement('b'); bold.textContent = (winner || 'server') + ' wins';
       const suffix = document.createTextNode('): "' + String(taskText || '').substring(0, 35) + '…"');
-      ct.appendChild(prefix);
-      ct.appendChild(bold);
-      ct.appendChild(suffix);
-      ct.classList.add('show');
-      clearTimeout(ct._t);
-      ct._t = setTimeout(() => ct.classList.remove('show'), 5000);
+      ct.appendChild(prefix); ct.appendChild(bold); ct.appendChild(suffix);
+      ct.classList.add('show'); clearTimeout(ct._t); ct._t = setTimeout(() => ct.classList.remove('show'), 5000);
     },
   };
 
-  /* ─── AUTH OVERLAY ──────────────────────────────────────────────────────── */
+  /* ─── AUTH OVERLAY (XSS-safe, built via DOM API) ────────────────────────── */
   const Auth = {
     show() {
       if (document.getElementById('ofs-auth-overlay')) return;
       const overlay = document.createElement('div');
       overlay.id = 'ofs-auth-overlay';
-      overlay.style.cssText = `
-        position:fixed;inset:0;z-index:10000;
-        background:linear-gradient(160deg,#0a1628 0%,#0e2347 50%,#0a1628 100%);
-        display:flex;align-items:center;justify-content:center;padding:20px;
-        animation:fadeIn .3s ease;
-      `;
-      overlay.innerHTML = `
-        <div style="background:var(--modal,#fff);border-radius:18px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.45);">
-          <div style="text-align:center;margin-bottom:24px;">
-            <div style="font-size:46px;margin-bottom:10px;animation:lockLogoBounce 2s ease-in-out infinite;">✅</div>
-            <h2 style="font-size:21px;font-weight:800;color:var(--blue,#0078d4);margin:0 0 5px;">My TO Do</h2>
-            <p style="font-size:12.5px;color:var(--tm,#a19f9d);margin:0;">Sign in to sync across devices</p>
-          </div>
-          <div style="display:flex;border:1px solid var(--bdr,#edebe9);border-radius:9px;margin-bottom:20px;overflow:hidden;">
-            <button id="ofs-tab-login"  onclick="OFS_Auth.tab('login')"
-              style="flex:1;padding:10px;border:none;background:var(--blue,#0078d4);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Sign In</button>
-            <button id="ofs-tab-signup" onclick="OFS_Auth.tab('signup')"
-              style="flex:1;padding:10px;border:none;background:transparent;color:var(--t2,#605e5c);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Create Account</button>
-          </div>
-          <div id="ofs-login-form">
-            <input id="ofs-email"  type="email"    placeholder="Email address"
-              style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr,#edebe9);border-radius:6px;font-size:14px;font-family:inherit;color:var(--t1,#201f1e);background:var(--inp,#f3f2f1);outline:none;margin-bottom:10px;box-sizing:border-box;"
-              onkeydown="if(event.key==='Enter')OFS_Auth.login()">
-            <input id="ofs-pass"   type="password" placeholder="Password"
-              style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr,#edebe9);border-radius:6px;font-size:14px;font-family:inherit;color:var(--t1,#201f1e);background:var(--inp,#f3f2f1);outline:none;margin-bottom:16px;box-sizing:border-box;"
-              onkeydown="if(event.key==='Enter')OFS_Auth.login()">
-            <button onclick="OFS_Auth.login()"
-              style="width:100%;padding:12px;background:var(--blue,#0078d4);color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign In</button>
-          </div>
-          <div id="ofs-signup-form" style="display:none;">
-            <input id="ofs-name"   type="text"     placeholder="Your name"
-              style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr,#edebe9);border-radius:6px;font-size:14px;font-family:inherit;color:var(--t1,#201f1e);background:var(--inp,#f3f2f1);outline:none;margin-bottom:10px;box-sizing:border-box;">
-            <input id="ofs-email2" type="email"    placeholder="Email address"
-              style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr,#edebe9);border-radius:6px;font-size:14px;font-family:inherit;color:var(--t1,#201f1e);background:var(--inp,#f3f2f1);outline:none;margin-bottom:10px;box-sizing:border-box;">
-            <input id="ofs-pass2"  type="password" placeholder="Password (min 8 chars)"
-              style="width:100%;padding:10px 12px;border:1.5px solid var(--bdr,#edebe9);border-radius:6px;font-size:14px;font-family:inherit;color:var(--t1,#201f1e);background:var(--inp,#f3f2f1);outline:none;margin-bottom:16px;box-sizing:border-box;"
-              onkeydown="if(event.key==='Enter')OFS_Auth.signup()">
-            <button onclick="OFS_Auth.signup()"
-              style="width:100%;padding:12px;background:#107c10;color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Create Account</button>
-          </div>
-          <p id="ofs-msg" style="font-size:12px;color:#d13438;margin-top:12px;min-height:18px;text-align:center;transition:all .2s;"></p>
-          <div style="text-align:center;margin-top:18px;padding-top:16px;border-top:1px solid var(--bdr,#edebe9);">
-            <button onclick="OFS_Auth.offline()"
-              style="background:none;border:none;color:var(--tm,#a19f9d);font-size:12.5px;cursor:pointer;font-family:inherit;text-decoration:underline;">
-              Continue offline (no sync)
-            </button>
-          </div>
-        </div>
-      `;
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:linear-gradient(160deg,#0a1628 0%,#0e2347 50%,#0a1628 100%);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s ease;';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--modal,#fff);border-radius:18px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(0,0,0,.45);';
+
+      // Header
+      const hdr = document.createElement('div'); hdr.style.cssText = 'text-align:center;margin-bottom:24px;';
+      const logo = document.createElement('div'); logo.style.cssText = 'font-size:46px;margin-bottom:10px;animation:lockLogoBounce 2s ease-in-out infinite;'; logo.textContent = '✅';
+      const h2 = document.createElement('h2'); h2.style.cssText = 'font-size:21px;font-weight:800;color:var(--blue,#0078d4);margin:0 0 5px;'; h2.textContent = 'My TO Do';
+      const sub = document.createElement('p'); sub.style.cssText = 'font-size:12.5px;color:var(--tm,#a19f9d);margin:0;'; sub.textContent = 'Sign in to sync across devices';
+      hdr.appendChild(logo); hdr.appendChild(h2); hdr.appendChild(sub);
+
+      // Tab row
+      const tabRow = document.createElement('div'); tabRow.style.cssText = 'display:flex;border:1px solid var(--bdr,#edebe9);border-radius:9px;margin-bottom:20px;overflow:hidden;';
+      const makeTabBtn = (id, label, active) => {
+        const b = document.createElement('button'); b.id = id;
+        b.style.cssText = 'flex:1;padding:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;' + (active ? 'background:var(--blue,#0078d4);color:#fff;' : 'background:transparent;color:var(--t2,#605e5c);');
+        b.textContent = label; return b;
+      };
+      const btnL = makeTabBtn('ofs-tab-login',  'Sign In',        true);
+      const btnS = makeTabBtn('ofs-tab-signup', 'Create Account', false);
+      btnL.addEventListener('click', () => OFS_Auth.tab('login'));
+      btnS.addEventListener('click', () => OFS_Auth.tab('signup'));
+      tabRow.appendChild(btnL); tabRow.appendChild(btnS);
+
+      // Input factory
+      const INP_STYLE = 'width:100%;padding:10px 12px;border:1.5px solid var(--bdr,#edebe9);border-radius:6px;font-size:14px;font-family:inherit;color:var(--t1,#201f1e);background:var(--inp,#f3f2f1);outline:none;margin-bottom:10px;box-sizing:border-box;';
+      const makeInp = (id, type, ph, enterCb) => {
+        const i = document.createElement('input'); i.id = id; i.type = type; i.placeholder = ph;
+        i.autocomplete = type === 'password' ? 'current-password' : type === 'email' ? 'email' : 'name';
+        i.style.cssText = INP_STYLE;
+        if (enterCb) i.addEventListener('keydown', e => { if (e.key === 'Enter') enterCb(); });
+        return i;
+      };
+      const makeBtn = (label, bg, cb) => {
+        const b = document.createElement('button');
+        b.style.cssText = 'width:100%;padding:12px;background:' + bg + ';color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;';
+        b.textContent = label; b.addEventListener('click', cb); return b;
+      };
+
+      // Login form
+      const loginForm = document.createElement('div'); loginForm.id = 'ofs-login-form';
+      loginForm.appendChild(makeInp('ofs-email', 'email',    'Email address',     () => OFS_Auth.login()));
+      loginForm.appendChild(makeInp('ofs-pass',  'password', 'Password',           () => OFS_Auth.login()));
+      loginForm.appendChild(makeBtn('Sign In', 'var(--blue,#0078d4)', () => OFS_Auth.login()));
+
+      // Signup form
+      const signupForm = document.createElement('div'); signupForm.id = 'ofs-signup-form'; signupForm.style.display = 'none';
+      signupForm.appendChild(makeInp('ofs-name',   'text',     'Your name',         null));
+      signupForm.appendChild(makeInp('ofs-email2', 'email',    'Email address',     null));
+      signupForm.appendChild(makeInp('ofs-pass2',  'password', 'Password (min 8 chars)', () => OFS_Auth.signup()));
+      signupForm.appendChild(makeBtn('Create Account', '#107c10', () => OFS_Auth.signup()));
+
+      // Message
+      const msg = document.createElement('p'); msg.id = 'ofs-msg'; msg.style.cssText = 'font-size:12px;color:#d13438;margin-top:12px;min-height:18px;text-align:center;transition:all .2s;';
+
+      // Offline link
+      const ofRow = document.createElement('div'); ofRow.style.cssText = 'text-align:center;margin-top:18px;padding-top:16px;border-top:1px solid var(--bdr,#edebe9);';
+      const ofBtn = document.createElement('button'); ofBtn.style.cssText = 'background:none;border:none;color:var(--tm,#a19f9d);font-size:12.5px;cursor:pointer;font-family:inherit;text-decoration:underline;';
+      ofBtn.textContent = 'Continue offline (no sync)'; ofBtn.addEventListener('click', () => OFS_Auth.offline()); ofRow.appendChild(ofBtn);
+
+      card.appendChild(hdr); card.appendChild(tabRow); card.appendChild(loginForm);
+      card.appendChild(signupForm); card.appendChild(msg); card.appendChild(ofRow);
+      overlay.appendChild(card);
       document.body.appendChild(overlay);
     },
     hide() {
@@ -6668,73 +6762,76 @@ function checkStorageHealth(){
     },
   };
 
-  // Expose auth actions as globals (needed by inline onclick)
+  /* ─── OFS_Auth — global auth handler ────────────────────────────────────── */
   window.OFS_Auth = {
     tab(t) {
-      document.getElementById('ofs-login-form').style.display  = t==='login'  ? 'block' : 'none';
-      document.getElementById('ofs-signup-form').style.display = t==='signup' ? 'block' : 'none';
-      document.getElementById('ofs-tab-login').style.background  = t==='login'  ? 'var(--blue,#0078d4)' : 'transparent';
-      document.getElementById('ofs-tab-login').style.color       = t==='login'  ? '#fff' : 'var(--t2,#605e5c)';
-      document.getElementById('ofs-tab-signup').style.background = t==='signup' ? '#107c10' : 'transparent';
-      document.getElementById('ofs-tab-signup').style.color      = t==='signup' ? '#fff' : 'var(--t2,#605e5c)';
-      document.getElementById('ofs-msg').textContent = '';
+      const lf = document.getElementById('ofs-login-form');
+      const sf = document.getElementById('ofs-signup-form');
+      const tl = document.getElementById('ofs-tab-login');
+      const ts = document.getElementById('ofs-tab-signup');
+      if (!lf || !sf) return;
+      lf.style.display = t === 'login'  ? 'block' : 'none';
+      sf.style.display = t === 'signup' ? 'block' : 'none';
+      if (tl) { tl.style.background = t === 'login'  ? 'var(--blue,#0078d4)' : 'transparent'; tl.style.color = t === 'login'  ? '#fff' : 'var(--t2,#605e5c)'; }
+      if (ts) { ts.style.background = t === 'signup' ? '#107c10' : 'transparent';              ts.style.color = t === 'signup' ? '#fff' : 'var(--t2,#605e5c)'; }
+      const m = document.getElementById('ofs-msg'); if (m) m.textContent = '';
     },
-    msg(m, col='#d13438') {
-      const el = document.getElementById('ofs-msg');
-      if (el) { el.textContent = m; el.style.color = col; }
-    },
+    msg(m, col = '#d13438') { const el = document.getElementById('ofs-msg'); if (el) { el.textContent = m; el.style.color = col; } },
+
     async login() {
       const email = (document.getElementById('ofs-email')?.value || '').trim();
       const pass  = (document.getElementById('ofs-pass')?.value  || '').trim();
-      // Input validation
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.msg('Please enter a valid email address.'); return; }
-      if (!pass || pass.length < 6) { this.msg('Password must be at least 6 characters.'); return; }
+      if (!pass  || pass.length < 6) { this.msg('Password must be at least 6 characters.'); return; }
       this.msg('Signing in…', 'var(--tm)');
       this._setFormBusy(true);
       try {
         const { ok, data } = await API.login(email, pass);
         if (!ok) { this.msg(data.message || 'Login failed. Check your credentials.'); return; }
-        Tok.set(data.token);
-        if (data.user?.name && window.userProfile) { window.userProfile.name = data.user.name; }
+        const token = data.token || data.accessToken;
+        if (!token) { this.msg('No token received. Please try again.'); return; }
+        Tok.set(token);
+        const user = data.user || { name: email.split('@')[0] };
+        if (user.name && window.userProfile) { window.userProfile.name = user.name; if (typeof window.applyProfile === 'function') window.applyProfile(); }
         Auth.hide();
-        Controller.postLogin(data.user);
+        Controller.postLogin(user);
       } catch(e) {
-        this.msg('Server unreachable. You can continue offline.');
+        this.msg(e.isNetworkError ? 'Cannot reach server. Check connection or continue offline.' : 'Login error. Please try again.');
         console.warn('[Auth] login error:', e);
-      } finally {
-        this._setFormBusy(false);
-      }
+      } finally { this._setFormBusy(false); }
     },
+
     async signup() {
-      const name  = (document.getElementById('ofs-name')?.value  || '').trim();
-      const email = (document.getElementById('ofs-email2')?.value|| '').trim();
-      const pass  = (document.getElementById('ofs-pass2')?.value || '').trim();
-      // Input validation
-      if (!name || name.length < 2)  { this.msg('Please enter your name (min 2 chars).'); return; }
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.msg('Please enter a valid email address.'); return; }
-      if (!pass || pass.length < 8)  { this.msg('Password must be at least 8 characters.'); return; }
+      const name  = (document.getElementById('ofs-name')?.value   || '').trim();
+      const email = (document.getElementById('ofs-email2')?.value  || '').trim();
+      const pass  = (document.getElementById('ofs-pass2')?.value   || '').trim();
+      if (!name  || name.length  < 2) { this.msg('Please enter your name (min 2 chars).'); return; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))   { this.msg('Please enter a valid email address.'); return; }
+      if (!pass  || pass.length  < 8) { this.msg('Password must be at least 8 characters.'); return; }
       this.msg('Creating account…', 'var(--tm)');
       this._setFormBusy(true);
       try {
-        const { ok, data } = await API.signup(name, email, pass);
-        if (!ok) { this.msg(data.message || 'Signup failed. Try a different email.'); return; }
-        Tok.set(data.token);
-        if (data.user?.name && window.userProfile) { window.userProfile.name = data.user.name; }
+        const { ok, data } = await API.register(name, email, pass);
+        if (!ok) { this.msg(data.message || 'Registration failed. Try a different email.'); return; }
+        const token = data.token || data.accessToken;
+        if (!token) { this.msg('No token received. Please try again.'); return; }
+        Tok.set(token);
+        const user = data.user || { name };
+        if (user.name && window.userProfile) { window.userProfile.name = user.name; if (typeof window.applyProfile === 'function') window.applyProfile(); }
         Auth.hide();
-        Controller.postSignup(data.user);
+        Controller.postSignup(user);
       } catch(e) {
-        this.msg('Server unreachable. You can continue offline.');
+        this.msg(e.isNetworkError ? 'Cannot reach server. Check connection or continue offline.' : 'Registration error. Please try again.');
         console.warn('[Auth] signup error:', e);
-      } finally {
-        this._setFormBusy(false);
-      }
+      } finally { this._setFormBusy(false); }
     },
+
     _setFormBusy(busy) {
-      // Disable/enable all inputs and buttons in auth overlay
-      const overlay = document.getElementById('ofs-auth-overlay');
-      if (!overlay) return;
-      overlay.querySelectorAll('input, button').forEach(el => { el.disabled = busy; });
+      const ov = document.getElementById('ofs-auth-overlay');
+      if (!ov) return;
+      ov.querySelectorAll('input, button').forEach(el => { el.disabled = busy; el.style.opacity = busy ? '0.6' : ''; });
     },
+
     offline() {
       window.__ofsOfflineMode = true;
       Auth.hide();
@@ -6742,40 +6839,33 @@ function checkStorageHealth(){
     },
   };
 
-  /* ─── CONTROLLER ────────────────────────────────────────────────────────── */
+  /* ─── CONTROLLER ─────────────────────────────────────────────────────────── */
   const Controller = {
-    _logoutBtn: null,
-
     async postLogin(user) {
       this._addLogoutBtn();
       if (typeof window.showLoading === 'function') window.showLoading();
       try {
         UI.showSkeletons(4);
-        await Sync.syncAll();        // push pending local + pull server
+        await Sync.syncAll();
         if (typeof window.render === 'function') window.render();
         if (typeof window.toast  === 'function') window.toast('👋 Welcome back, ' + (user?.name || '') + '!');
       } catch(e) {
-        if (typeof window.showError === 'function') window.showError('Sync failed — your data is saved locally.');
-        console.error('[Controller] postLogin sync error:', e);
-      } finally {
-        if (typeof window.hideLoading === 'function') window.hideLoading();
-      }
+        if (typeof window.showError === 'function') window.showError('Sync failed — data saved locally.');
+        console.error('[Controller] postLogin error:', e);
+      } finally { if (typeof window.hideLoading === 'function') window.hideLoading(); }
     },
 
     async postSignup(user) {
       this._addLogoutBtn();
       if (typeof window.showLoading === 'function') window.showLoading();
       try {
-        // Push all existing local tasks to server
         const localTasks = (window.tasks || []).map(t => Merge.localToApi(t));
-        if (localTasks.length) await API.bulkSync(localTasks);
+        if (localTasks.length) await API.bulkUpsert(localTasks);
         if (typeof window.toast === 'function') window.toast('🎉 Account created! Welcome, ' + (user?.name || '') + '!');
       } catch(e) {
         if (typeof window.showError === 'function') window.showError('Could not upload local tasks — they remain saved locally.');
-        console.error('[Controller] postSignup upload error:', e);
-      } finally {
-        if (typeof window.hideLoading === 'function') window.hideLoading();
-      }
+        console.error('[Controller] postSignup error:', e);
+      } finally { if (typeof window.hideLoading === 'function') window.hideLoading(); }
     },
 
     _addLogoutBtn() {
@@ -6783,18 +6873,12 @@ function checkStorageHealth(){
       const sbFoot = document.querySelector('.sb-foot');
       if (!sbFoot) return;
       const btn = document.createElement('button');
-      btn.id = 'ofs-logout-btn';
-      btn.className = 'sb-foot-icon-btn';
+      btn.id = 'ofs-logout-btn'; btn.className = 'sb-foot-icon-btn';
       btn.style.cssText = 'flex:1;background:#fde7e0;border-color:#d13438;color:#d13438;margin-top:6px;width:100%;';
-      // Use safe DOM construction instead of innerHTML
-      const icon = document.createElement('span');
-      icon.className = 'sfi-icon';
-      icon.textContent = '🚪';
-      const label = document.createElement('span');
-      label.textContent = 'Logout';
-      btn.appendChild(icon);
-      btn.appendChild(label);
-      btn.onclick = () => this.logout();
+      const icon = document.createElement('span'); icon.className = 'sfi-icon'; icon.textContent = '🚪';
+      const lbl  = document.createElement('span'); lbl.textContent = 'Logout';
+      btn.appendChild(icon); btn.appendChild(lbl);
+      btn.addEventListener('click', () => this.logout());
       sbFoot.appendChild(btn);
     },
 
@@ -6802,157 +6886,86 @@ function checkStorageHealth(){
       if (!confirm('Log out? Your tasks remain on the server.')) return;
       Tok.clear();
       window.__ofsOfflineMode = false;
-      const lb = document.getElementById('ofs-logout-btn');
-      if (lb) lb.remove();
+      const lb = document.getElementById('ofs-logout-btn'); if (lb) lb.remove();
       if (typeof window.toast === 'function') window.toast('👋 Logged out.');
       setTimeout(() => Auth.show(), 600);
     },
   };
 
-  /* ─── HOOK INTO EXISTING APP FUNCTIONS ─────────────────────────────────── */
-  // Strategy: wrap existing functions, add updatedAt + synced flag, enqueue sync.
-  // We defer wrapping until after window.onload so all original functions exist.
-
+  /* ─── WRAP APP FUNCTIONS (intercept mutations) ──────────────────────────── */
   function _wrapAppFunctions() {
-    /* ── Helper: add updatedAt + synced=false to a task ── */
-    function stamp(t) {
-      t.updatedAt = Date.now();
-      t.synced    = false;
-      return t;
-    }
+    const stamp = t => { t.updatedAt = Date.now(); t.synced = false; return t; };
 
-    /* ── doQuickAdd: stamp + enqueue ── */
-    const _origQA = window.doQuickAdd;
-    window.doQuickAdd = function() {
+    const wrapCreate = orig => function() {
       const before = (window.tasks || []).length;
-      _origQA.apply(this, arguments);
+      orig && orig.apply(this, arguments);
       const after = window.tasks || [];
-      if (after.length > before) {
-        const newest = after[after.length - 1];
-        stamp(newest);
-        Sync.enqueueUpsert(Merge.localToApi(newest));
-      }
+      if (after.length > before) { const newest = after[after.length - 1]; stamp(newest); Sync.enqueueUpsert(Merge.localToApi(newest)); }
     };
+    window.doQuickAdd   = wrapCreate(window.doQuickAdd);
+    window.addFromModal = wrapCreate(window.addFromModal);
 
-    /* ── addFromModal: stamp + enqueue ── */
-    const _origAFM = window.addFromModal;
-    window.addFromModal = function() {
-      const before = (window.tasks || []).length;
-      _origAFM.apply(this, arguments);
-      const after = window.tasks || [];
-      if (after.length > before) {
-        const newest = after[after.length - 1];
-        stamp(newest);
-        Sync.enqueueUpsert(Merge.localToApi(newest));
-      }
-    };
-
-    /* ── toggle (done/undone): stamp + enqueue ── */
-    const _origToggle = window.toggle;
-    window.toggle = function(id) {
-      _origToggle.apply(this, arguments);
+    const wrapToggle = (orig) => function(id) {
+      orig && orig.apply(this, arguments);
       const t = (window.tasks || []).find(t => t.id == id);
       if (t) { stamp(t); Sync.enqueueUpsert(Merge.localToApi(t)); }
     };
+    window.toggle     = wrapToggle(window.toggle);
+    window.toggleStar = wrapToggle(window.toggleStar);
+    window.togglePin  = wrapToggle(window.togglePin);
 
-    /* ── toggleStar ── */
-    const _origStar = window.toggleStar;
-    window.toggleStar = function(id) {
-      _origStar.apply(this, arguments);
-      const t = (window.tasks || []).find(t => t.id == id);
-      if (t) { stamp(t); Sync.enqueueUpsert(Merge.localToApi(t)); }
-    };
-
-    /* ── togglePin ── */
-    const _origPin = window.togglePin;
-    window.togglePin = function(id) {
-      _origPin.apply(this, arguments);
-      const t = (window.tasks || []).find(t => t.id == id);
-      if (t) { stamp(t); Sync.enqueueUpsert(Merge.localToApi(t)); }
-    };
-
-    /* ── delTask: enqueue delete (secure - no window.confirm patching) ── */
-    const _origDel = window.delTask;
     window.delTask = function(id) {
-      // Single confirm — we handle deletion directly to avoid double-confirm
       if (!confirm('Delete this task?')) return;
-      const t = (window.tasks || []).find(t => t.id == id);
-      if (!t) return;
-      // Directly replicate delTask logic without re-confirming
-      const forDate = t.origDue || t.due || (typeof window.todayStr === 'function' ? window.todayStr() : '');
-      if (t.done) {
-        if (typeof window.snapshotOnCompletion === 'function') window.snapshotOnCompletion(forDate);
-      } else {
-        if (window.progressHistory && window.progressHistory['day:' + forDate]) {
-          const snap = window.progressHistory['day:' + forDate];
-          if (snap && snap.due > 0) {
-            snap.due = Math.max(0, snap.due - 1);
-            snap.pct = snap.due > 0 ? Math.round(snap.done / snap.due * 100) : null;
-            snap.isStreak = snap.pct !== null && snap.pct >= 80;
-            if (typeof window.updateWeekMonthAgg === 'function') window.updateWeekMonthAgg(forDate, snap.due, snap.done, snap.pct);
-          }
-        }
+      const t = (window.tasks || []).find(t => t.id == id); if (!t) return;
+      const serverId = t._serverId || null;
+      const forDate  = t.origDue || t.due || (typeof window.todayStr === 'function' ? window.todayStr() : '');
+      if (!t.done && window.progressHistory && window.progressHistory['day:' + forDate]) {
+        const snap = window.progressHistory['day:' + forDate];
+        if (snap && snap.due > 0) { snap.due = Math.max(0, snap.due - 1); snap.pct = snap.due > 0 ? Math.round(snap.done / snap.due * 100) : null; snap.isStreak = snap.pct !== null && snap.pct >= 80; if (typeof window.updateWeekMonthAgg === 'function') window.updateWeekMonthAgg(forDate, snap.due, snap.done, snap.pct); }
       }
       window.tasks = (window.tasks || []).filter(t => t.id != id);
       if (typeof window.saveAll === 'function') window.saveAll();
       if (typeof window.render  === 'function') window.render();
       if (typeof window.toast   === 'function') window.toast('🗑 Deleted');
-      Sync.enqueueDelete(id);
+      Sync.enqueueDelete(id, serverId);
     };
 
-    /* ── deleteAllCompleted: enqueue bulk delete ── */
-    const _origDAC = window.deleteAllCompleted;
     window.deleteAllCompleted = function() {
       const cnt = (window.tasks || []).filter(t => t.done).length;
       if (!cnt) { if (typeof window.toast === 'function') window.toast('No completed tasks to delete'); return; }
-      if (!confirm('Delete all ' + cnt + ' completed tasks?\n✅ Your analytics & graphs will NOT be affected.')) return;
-      const doneIds = (window.tasks || []).filter(t => t.done).map(t => t.id);
-      // Snapshot before deleting
-      const dates = [...new Set((window.tasks || []).filter(t => t.done).map(t => t.origDue || t.due).filter(Boolean))];
+      if (!confirm('Delete all ' + cnt + ' completed tasks?\n✅ Analytics will NOT be affected.')) return;
+      const doneTasks = (window.tasks || []).filter(t => t.done);
+      const dates = [...new Set(doneTasks.map(t => t.origDue || t.due).filter(Boolean))];
       if (typeof window.snapshotOnCompletion === 'function') dates.forEach(d => window.snapshotOnCompletion(d));
+      doneTasks.forEach(t => Sync.enqueueDelete(t.id, t._serverId || null));
       window.tasks = (window.tasks || []).filter(t => !t.done);
-      if (typeof window.saveAll  === 'function') window.saveAll();
-      if (typeof window.render   === 'function') window.render();
-      if (typeof window.toast    === 'function') window.toast('🗑 ' + cnt + ' completed tasks deleted — Analytics preserved ✅');
-      // Enqueue deletes + server bulk delete
-      doneIds.forEach(id => Sync.enqueueDelete(id));
+      if (typeof window.saveAll === 'function') window.saveAll();
+      if (typeof window.render  === 'function') window.render();
+      if (typeof window.toast   === 'function') window.toast('🗑 ' + cnt + ' completed tasks deleted — Analytics preserved ✅');
       if (Net.online && Tok.has()) API.deleteAllCompleted();
     };
 
-    /* ── setPriorityCtx ── */
-    const _origSPC = window.setPriorityCtx;
-    if (_origSPC) {
-      window.setPriorityCtx = function(id, pri) {
-        _origSPC.apply(this, arguments);
-        const t = (window.tasks || []).find(t => t.id == id);
-        if (t) { stamp(t); Sync.enqueueUpsert(Merge.localToApi(t)); }
-      };
+    if (window.setPriorityCtx) {
+      const orig = window.setPriorityCtx;
+      window.setPriorityCtx = function(id, pri) { orig.apply(this, arguments); const t = (window.tasks || []).find(t => t.id == id); if (t) { stamp(t); Sync.enqueueUpsert(Merge.localToApi(t)); } };
+    }
+    if (window.saveInlineReminder) {
+      const orig = window.saveInlineReminder;
+      window.saveInlineReminder = function(id) { orig.apply(this, arguments); const t = (window.tasks || []).find(t => t.id == id); if (t) { stamp(t); Sync.enqueueUpsert(Merge.localToApi(t)); } };
     }
 
-    /* ── saveInlineReminder ── */
-    const _origSIR = window.saveInlineReminder;
-    if (_origSIR) {
-      window.saveInlineReminder = function(id) {
-        _origSIR.apply(this, arguments);
-        const t = (window.tasks || []).find(t => t.id == id);
-        if (t) { stamp(t); Sync.enqueueUpsert(Merge.localToApi(t)); }
-      };
-    }
-
-    /* ── Patch tHTML to inject sync dot into task row HTML ── */
-    const _origTHTML = window.tHTML;
-    if (_origTHTML) {
+    if (window.tHTML) {
+      const orig = window.tHTML;
       window.tHTML = function(t) {
-        const html = _origTHTML.apply(this, arguments);
-        const dotState = t.synced === false ? 'pending' : 'synced';
-        const dot = `<div id="tsync-${t.id}" class="task-sync-dot ${dotState}" title="${dotState === 'pending' ? 'Waiting to sync' : ''}"></div>`;
-        // Inject before the closing </div> of ti
+        const html  = orig.apply(this, arguments);
+        const state = t.synced === false ? 'pending' : 'synced';
+        const dot   = '<div id="tsync-' + t.id + '" class="task-sync-dot ' + state + '" title="' + (state === 'pending' ? 'Waiting to sync' : '') + '"></div>';
         return html.replace(/(<\/div>)\s*$/, dot + '$1');
       };
     }
   }
 
-  /* ─── ONLINE/OFFLINE EVENT HANDLERS ────────────────────────────────────── */
+  /* ─── ONLINE / OFFLINE EVENTS ────────────────────────────────────────────── */
   Net.on(async (online) => {
     if (online) {
       UI.hideOfflineBanner();
@@ -6965,76 +6978,49 @@ function checkStorageHealth(){
     }
   });
 
-  /* ─── BOOT SEQUENCE ─────────────────────────────────────────────────────── */
+  /* ─── BOOT ─────────────────────────────────────────────────────────────── */
   async function boot() {
-    // Wait for original window.onload to finish
-    await new Promise(r => {
-      if (document.readyState === 'complete') r();
-      else window.addEventListener('load', r, { once: true });
-    });
-    // Small buffer so all original init functions have run
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => { if (document.readyState === 'complete') r(); else window.addEventListener('load', r, { once: true }); });
+    await new Promise(r => setTimeout(r, 300));
 
-    // Init network watcher
     Net.init();
-
-    // Wrap app functions
     _wrapAppFunctions();
 
-    // Initialise offline banner if starting offline
-    if (!Net.online) {
-      const count = await IDB.getQueueCount();
-      UI.showOfflineBanner(count);
-    }
+    if (!Net.online) { const count = await IDB.getQueueCount(); UI.showOfflineBanner(count); }
 
-    // Background sync heartbeat
     setInterval(async () => {
       if (Net.online && Tok.has() && !window.__ofsOfflineMode && !document.hidden) {
         const count = await IDB.getQueueCount();
-        if (count > 0) await Sync.syncAll();
-        else Sync._pullMerge && Sync._pullMerge();
+        if (count > 0) await Sync.syncAll(); else await Sync._pullMerge();
       }
-      // Update pending badge
       const count = await IDB.getQueueCount();
       if (!Net.online) UI.updatePendingBadge(count);
     }, SYNC_INTERVAL_MS);
 
-    // Update queue badge on startup
     UI.updateQueueBadge();
-
-    // Auth check
     if (window.__ofsOfflineMode) return;
 
     if (Tok.has()) {
-      // Validate existing token
       try {
         const { ok, data } = await API.getMe();
         if (ok) {
-          if (data.user?.name && window.userProfile) {
-            window.userProfile.name = data.user.name;
-            if (typeof window.applyProfile === 'function') window.applyProfile();
-          }
+          if (data.user?.name && window.userProfile) { window.userProfile.name = data.user.name; if (typeof window.applyProfile === 'function') window.applyProfile(); }
           Controller._addLogoutBtn();
-          // Sync any queued local changes, then pull server state
           await Sync.syncAll();
           return;
         }
       } catch(_) {}
-      // Token invalid — clear and prompt login
       Tok.clear();
     }
 
-    // No valid token — show auth overlay after app renders
-    setTimeout(() => {
-      if (!window.__ofsOfflineMode && !Tok.has()) Auth.show();
-    }, 700);
+    setTimeout(() => { if (!window.__ofsOfflineMode && !Tok.has()) Auth.show(); }, 700);
   }
 
   boot().catch(e => console.error('[OFS] Boot error:', e));
 
-})(); // end OfflineFirstSystem IIFE
-
+})(); // end OfflineFirstSystem
 </script>
+
 <!-- ═══════════════════════════════════════════════════════════════════════
      EVENT BINDING LAYER
      Replaces ALL inline onclick/oninput/onchange handlers.
