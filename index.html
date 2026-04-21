@@ -1189,16 +1189,16 @@ body.offline-mode #lock-screen{ padding-top:38px; }
     </div>
   </div>
   <nav class="sb-nav" role="navigation" aria-label="Task lists">
-    <div class="ni active" id="nav-__myday" data-list="__myday" role="button" tabindex="0">
+    <div class="ni active" id="nav-__myday" data-list="__myday" role="button" tabindex="0" onclick="setList('__myday')">
       <span class="icon">☀️</span> My Day <span class="badge" id="nb-myday">0</span>
     </div>
-    <div class="ni" id="nav-__important" data-list="__important" role="button" tabindex="0">
+    <div class="ni" id="nav-__important" data-list="__important" role="button" tabindex="0" onclick="setList('__important')">
       <span class="icon">⭐</span> Important <span class="badge" id="nb-imp" style="display:none"></span>
     </div>
-    <div class="ni" id="nav-__planned" data-list="__planned" role="button" tabindex="0">
+    <div class="ni" id="nav-__planned" data-list="__planned" role="button" tabindex="0" onclick="setList('__planned')">
       <span class="icon">📅</span> Planned
     </div>
-    <div class="ni" id="nav-__all" data-list="__all" role="button" tabindex="0">
+    <div class="ni" id="nav-__all" data-list="__all" role="button" tabindex="0" onclick="setList('__all')">
       <span class="icon">📋</span> All Tasks <span class="badge" id="nb-all">0</span>
     </div>
     <div class="nsec">My Lists <button class="alb" id="new-list-btn" title="New list" aria-label="New list">＋</button></div>
@@ -1243,10 +1243,10 @@ body.offline-mode #lock-screen{ padding-top:38px; }
   </div>
 
   <div class="tabs" role="tablist" aria-label="App sections">
-    <div class="tab active" role="tab" aria-selected="true" data-view="tasks" tabindex="0">📝 Tasks</div>
-    <div class="tab" role="tab" aria-selected="false" data-view="analytics" tabindex="0">📊 Analytics</div>
-    <div class="tab" role="tab" aria-selected="false" data-view="calendar" tabindex="0">📅 Calendar</div>
-    <div class="tab" role="tab" aria-selected="false" data-view="history" tabindex="0">📁 Progress Record</div>
+    <div class="tab active" role="tab" aria-selected="true" data-view="tasks" tabindex="0" onclick="showView('tasks',this)">📝 Tasks</div>
+    <div class="tab" role="tab" aria-selected="false" data-view="analytics" tabindex="0" onclick="showView('analytics',this)">📊 Analytics</div>
+    <div class="tab" role="tab" aria-selected="false" data-view="calendar" tabindex="0" onclick="showView('calendar',this)">📅 Calendar</div>
+    <div class="tab" role="tab" aria-selected="false" data-view="history" tabindex="0" onclick="showView('history',this)">📁 Progress Record</div>
   </div>
 
   <div class="toolbar">
@@ -2480,7 +2480,17 @@ function updateDD(){
 }
 
 /* ═══ NAV ═══ */
-function setList(id){ currentList=id; currentFilter='all'; document.querySelectorAll('.fchip').forEach((c,i)=>c.classList.toggle('active',i===0)); saveAll(); render(); closeSB(); }
+function setList(id){
+  currentList=id;
+  currentFilter='all';
+  document.querySelectorAll('.fchip').forEach((c,i)=>c.classList.toggle('active',i===0));
+  saveAll();
+  render();
+  closeSB();
+  // Auto-switch to Tasks tab whenever a list/nav item is clicked
+  const tasksTab = document.querySelector('.tab[data-view="tasks"]');
+  if(tasksTab) showView('tasks', tasksTab);
+}
 function showView(v,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); el.classList.add('active');
   ['tasks','analytics','calendar','reminders','history'].forEach(name=>{
@@ -7667,107 +7677,8 @@ function checkStorageHealth(){
   whenReady(function() {
 
     /* ════════════════════════════════════════════════════════
-       PATCH: renderSB — replace onclick/oncontextmenu with
-       data attributes; use event delegation on #custom-lists
+       renderSB patch removed — original already uses safe DOM
     ════════════════════════════════════════════════════════ */
-    if (typeof window.renderSB === 'function') {
-      const _orig = window.renderSB;
-      window.renderSB = function() {
-        // Call original to build the HTML
-        _orig.apply(this, arguments);
-
-        // Now re-build custom list items using safe DOM methods
-        const container = document.getElementById('custom-lists');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        (window.customLists || []).forEach(l => {
-          const ia = window.currentList === l.id;
-          const cnt = (window.tasks || []).filter(t => (t.list === l.id || t.cat === l.id) && !t.done).length;
-
-          const div = document.createElement('div');
-          div.className = 'ni lni' + (ia ? ' active' : '');
-          div.id = 'nav-' + l.id;
-          div.dataset.list = l.id;
-          div.setAttribute('role', 'button');
-          div.setAttribute('tabindex', '0');
-          div.addEventListener('click', (e) => {
-            if (!e.target.closest('.lia')) setList(l.id);
-          });
-          div.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (typeof openCtx === 'function') openCtx(e, l.id);
-          });
-          div.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setList(l.id); }
-          });
-
-          const iconSpan = document.createElement('span');
-          iconSpan.className = 'icon';
-          iconSpan.textContent = l.icon;
-
-          const labelSpan = document.createElement('span');
-          labelSpan.className = 'll';
-          labelSpan.id = 'll-' + l.id;
-          labelSpan.textContent = l.name;
-
-          const actions = document.createElement('div');
-          actions.className = 'lia';
-          actions.addEventListener('click', e => e.stopPropagation());
-
-          const renameBtn = document.createElement('button');
-          renameBtn.className = 'lab';
-          renameBtn.title = 'Rename';
-          renameBtn.textContent = '✏️';
-          renameBtn.setAttribute('aria-label', 'Rename ' + l.name);
-          renameBtn.addEventListener('click', e => { e.stopPropagation(); if (typeof startRename === 'function') startRename(e, l.id); });
-
-          const editBtn = document.createElement('button');
-          editBtn.className = 'lab';
-          editBtn.title = 'Edit';
-          editBtn.textContent = '🎨';
-          editBtn.setAttribute('aria-label', 'Edit ' + l.name);
-          editBtn.addEventListener('click', e => { e.stopPropagation(); if (typeof openEditLM === 'function') openEditLM(e, l.id); });
-
-          const delBtn = document.createElement('button');
-          delBtn.className = 'lab';
-          delBtn.title = 'Delete';
-          delBtn.style.color = '#d13438';
-          delBtn.textContent = '🗑';
-          delBtn.setAttribute('aria-label', 'Delete ' + l.name);
-          delBtn.addEventListener('click', e => { e.stopPropagation(); if (typeof delList === 'function') delList(e, l.id); });
-
-          actions.appendChild(renameBtn);
-          actions.appendChild(editBtn);
-          actions.appendChild(delBtn);
-
-          div.appendChild(iconSpan);
-          div.appendChild(labelSpan);
-          div.appendChild(actions);
-
-          if (cnt > 0) {
-            const badge = document.createElement('span');
-            badge.className = 'badge';
-            badge.style.background = l.color;
-            badge.style.marginLeft = '2px';
-            badge.textContent = String(cnt);
-            div.appendChild(badge);
-          }
-
-          container.appendChild(div);
-        });
-
-        // Sync active state for system lists
-        ['__myday','__important','__planned','__all'].forEach(id => {
-          const e = document.getElementById('nav-' + id);
-          if (e) e.classList.toggle('active', window.currentList === id);
-        });
-        if (typeof updateBadges === 'function') updateBadges();
-        const permIcon = document.getElementById('notif-perm-icon');
-        if (permIcon && typeof getNotifStatusIcon === 'function') permIcon.textContent = getNotifStatusIcon();
-      };
-    }
 
     /* ════════════════════════════════════════════════════════
        PATCH: tHTML — replace all inline onclick with data-*
