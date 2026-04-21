@@ -9,7 +9,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="no-referrer">
 <!-- CSP: unsafe-inline required for single-file HTML; nonce-based CSP recommended when served from a dedicated server -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https: https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
 <!-- PWA / Android -->
@@ -575,18 +575,29 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-
   padding:24px 20px 18px;text-align:center;
 }
 .profile-ava-big{
-  width:80px;height:80px;border-radius:50%;background:#fff3;
-  border:3px solid rgba(255,255,255,.6);margin:0 auto 10px;
+  width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.18);
+  border:3px solid rgba(255,255,255,.6);margin:0 auto 12px;
   display:flex;align-items:center;justify-content:center;
-  font-size:28px;font-weight:800;color:#fff;overflow:hidden;
-  cursor:pointer;position:relative;transition:transform .2s;
+  font-size:44px;font-weight:800;color:#fff;overflow:hidden;
+  cursor:pointer;position:relative;transition:transform .2s,box-shadow .2s;
+  line-height:1;box-shadow:0 4px 20px rgba(0,0,0,.2);
 }
-.profile-ava-big:hover{transform:scale(1.05);}
-.profile-ava-big img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.profile-ava-big:hover{transform:scale(1.04);box-shadow:0 6px 28px rgba(0,0,0,.3);}
+.profile-ava-big img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;}
+/* GitHub-style full-circle hover overlay */
 .profile-ava-change{
-  position:absolute;bottom:0;right:0;background:var(--blue);border-radius:50%;
-  width:24px;height:24px;display:flex;align-items:center;justify-content:center;
-  font-size:12px;border:2px solid #fff;
+  position:absolute;inset:0;border-radius:50%;
+  background:rgba(0,0,0,.45);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-size:20px;color:#fff;
+  opacity:0;transition:opacity .2s;cursor:pointer;
+}
+.profile-ava-change-label{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1;}
+.profile-ava-big:hover .profile-ava-change{opacity:1;}
+.profile-ava-content{
+  font-size:44px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;
 }
 .profile-modal-name{color:#fff;font-size:16px;font-weight:800;margin-bottom:2px;}
 .profile-modal-email{color:rgba(255,255,255,.75);font-size:12px;}
@@ -1019,15 +1030,16 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-
 .sb-head-row{display:flex;align-items:center;gap:6px;width:100%;}
 .sb-head-ava{
   margin-left:auto;flex-shrink:0;cursor:pointer;position:relative;
-  width:34px;height:34px;
+  width:40px;height:40px;
 }
 .sb-hava-inner{
-  width:34px;height:34px;border-radius:50%;background:var(--blue);
+  width:40px;height:40px;border-radius:50%;background:var(--blue);
   color:#fff;display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:800;overflow:hidden;border:2px solid rgba(255,255,255,.35);
+  font-size:22px;font-weight:800;overflow:hidden;border:2px solid rgba(255,255,255,.35);
   transition:transform .2s,box-shadow .2s;
+  line-height:1;
 }
-.sb-hava-inner img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.sb-hava-inner img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;}
 .sb-head-ava:hover .sb-hava-inner{transform:scale(1.08);box-shadow:0 0 0 3px var(--blue-l);}
 .sb-hava-ring{
   position:absolute;inset:-2px;border-radius:50%;
@@ -5120,8 +5132,8 @@ function applyProfile(){
       ava.appendChild(img); ava.appendChild(overlay);
     } else {
       const span=document.createElement('span');
-      if(userProfile.emoji&&userProfile.emoji.length>2){ span.style.fontSize='17px'; span.textContent=userProfile.emoji; }
-      else { span.id='sidebar-ava-text'; span.textContent=userProfile.emoji||initials; }
+      if(userProfile.emoji&&userProfile.emoji.length>2){ span.style.fontSize='22px'; span.style.lineHeight='1'; span.textContent=userProfile.emoji; }
+      else { span.id='sidebar-ava-text'; span.style.fontSize='13px'; span.textContent=userProfile.emoji||initials; }
       ava.appendChild(span); ava.appendChild(overlay);
     }
   }
@@ -5132,20 +5144,7 @@ function applyProfile(){
   const pavaWrap=document.getElementById('profile-ava-big');
   if(pname) pname.textContent=n;
   if(ptag) ptag.textContent=userProfile.tagline||'';
-  if(pavaWrap&&pavaBig){
-    if(userProfile.photo){
-      pavaWrap.textContent='';
-      const img=document.createElement('img'); img.src=escUrl(userProfile.photo); img.alt='Profile';
-      img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%;';
-      const ch=document.createElement('div'); ch.className='profile-ava-change'; ch.textContent='📷';
-      ch.addEventListener('click',triggerAvaUpload);
-      pavaWrap.appendChild(img); pavaWrap.appendChild(ch);
-    } else if(userProfile.emoji&&userProfile.emoji.length>2){
-      pavaBig.textContent=userProfile.emoji;
-    } else {
-      pavaBig.textContent=userProfile.emoji||initials;
-    }
-  }
+  if(pavaWrap) _renderBigAva();
   // Sync header avatar circle in sidebar head
   updateHeaderAvatar();
 }
@@ -5175,13 +5174,8 @@ document.getElementById('profile-modal').addEventListener('click',function(e){ i
 function selectProfileEmoji(e){
   userProfile.emoji=e; userProfile.photo=null;
   document.querySelectorAll('.emoji-opt').forEach(el=>el.classList.toggle('sel',el.textContent===e));
-  const pavaWrap=document.getElementById('profile-ava-big');
-  if(pavaWrap){
-    pavaWrap.textContent='';
-    const span=document.createElement('span'); span.className='profile-ava-content'; span.style.fontSize='32px'; span.textContent=e;
-    const ch=document.createElement('div'); ch.className='profile-ava-change'; ch.textContent='📷'; ch.addEventListener('click',triggerAvaUpload);
-    pavaWrap.appendChild(span); pavaWrap.appendChild(ch);
-  }
+  _renderBigAva();
+  updateHeaderAvatar();
 }
 function triggerAvaUpload(){
   document.getElementById('ava-file-input').click();
@@ -5210,14 +5204,8 @@ function handleAvaUpload(e){
         quality-=0.1;
       } while(dataUrl.length>130000 && quality>0.2); // ~100KB in base64 ≈ 133KB chars
       userProfile.photo=dataUrl; userProfile.emoji='';
-      const pavaWrap=document.getElementById('profile-ava-big');
-      if(pavaWrap){
-        pavaWrap.textContent='';
-        const img2=document.createElement('img'); img2.src=escUrl(userProfile.photo);
-        img2.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%;';
-        const ch=document.createElement('div'); ch.className='profile-ava-change'; ch.textContent='📷'; ch.addEventListener('click',triggerAvaUpload);
-        pavaWrap.appendChild(img2); pavaWrap.appendChild(ch);
-      }
+      _renderBigAva();
+      updateHeaderAvatar();
       document.getElementById('profile-modal-name').textContent=userProfile.name;
       toast('📷 Photo updated!');
     };
@@ -5230,14 +5218,8 @@ function clearAvaPhoto(){
   userProfile.photo=null;
   const initials=(userProfile.name||'SH').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
   userProfile.emoji=initials;
-  const pavaWrap=document.getElementById('profile-ava-big');
-  if(pavaWrap){
-    pavaWrap.textContent='';
-    const span=document.createElement('span'); span.className='profile-ava-content';
-    span.style.cssText='font-size:28px;font-weight:800;color:#fff'; span.textContent=initials;
-    const ch=document.createElement('div'); ch.className='profile-ava-change'; ch.textContent='📷'; ch.addEventListener('click',triggerAvaUpload);
-    pavaWrap.appendChild(span); pavaWrap.appendChild(ch);
-  }
+  _renderBigAva();
+  updateHeaderAvatar();
   toast('Photo removed');
 }
 function saveProfile(){
@@ -5969,15 +5951,22 @@ function updateHeaderAvatar(){
   const inner=document.getElementById('sb-head-ava-inner'); if(!inner) return;
   const n=userProfile.name||'Shubham';
   const initials=n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  inner.textContent='';
+  inner.style.fontSize=''; // reset
   if(userProfile.photo){
-    inner.textContent='';
-    const img=document.createElement('img'); img.src=escUrl(userProfile.photo); img.alt='Profile';
+    const img=document.createElement('img');
+    img.src=escUrl(userProfile.photo); img.alt='Profile';
+    img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
     inner.appendChild(img);
-  } else if(userProfile.emoji&&userProfile.emoji.length>2){
-    inner.style.fontSize='17px';
+  } else if(userProfile.emoji && userProfile.emoji.length>2){
+    // Emoji avatar — fill the circle
+    inner.style.fontSize='24px';
+    inner.style.lineHeight='1';
     inner.textContent=userProfile.emoji;
   } else {
-    inner.style.fontSize='11px';
+    // Initials — smaller text
+    inner.style.fontSize='13px';
+    inner.style.fontWeight='800';
     inner.textContent=userProfile.emoji||initials;
   }
 }
@@ -6183,7 +6172,7 @@ function checkStorageHealth(){
    ██                                                                      ██
    ██       BACKEND INTEGRATION SYSTEM  v3.0                              ██
    ██       Render backend: todo-backend-tl1v.onrender.com                ██
-   ██       Endpoints: /api/auth/signup|login    /api/tasks               ██
+   ██       Endpoints: /api/auth/register|login  /api/todos               ██
    ██       Offline-first, IndexedDB queue, conflict resolution           ██
    ██                                                                      ██
    ██████████████████████████████████████████████████████████████████████████
@@ -6330,12 +6319,7 @@ function checkStorageHealth(){
       if (Tok.has()) headers['Authorization'] = 'Bearer ' + Tok.get();
       let res;
       try {
-        // Render free tier can take up to 50s to cold-start — use 65s timeout
-        const controller = new AbortController();
-        const timeoutId  = setTimeout(() => controller.abort(), 65000);
-        const signal     = opts.signal || controller.signal;
-        res = await fetch(API_BASE + path, { ...opts, headers, signal });
-        clearTimeout(timeoutId);
+        res = await fetch(API_BASE + path, { ...opts, headers, signal: opts.signal });
       } catch (netErr) {
         const e = new Error('Network error: ' + netErr.message);
         e.isNetworkError = true;
@@ -6356,9 +6340,9 @@ function checkStorageHealth(){
     login(email, pass) {
       return this.fetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
     },
-    // POST /api/auth/signup
+    // POST /api/auth/register
     register(name, email, pass) {
-      return this.fetch('/auth/signup', { method: 'POST', body: JSON.stringify({ name, email, password: pass }) });
+      return this.fetch('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password: pass }) });
     },
     // Verify token — try /auth/me, fall back to GET /todos
     async getMe() {
@@ -6366,36 +6350,36 @@ function checkStorageHealth(){
         const r = await this.fetch('/auth/me');
         if (r.status !== 404) return r;
       } catch(_) {}
-      const r = await this.fetch('/tasks');
+      const r = await this.fetch('/todos');
       return { ok: r.ok, status: r.status, data: { user: null } };
     },
 
-    // GET /api/tasks
-    getTasks()           { return this.fetch('/tasks'); },
-    // POST /api/tasks
-    createTask(t)        { return this.fetch('/tasks',      { method: 'POST',   body: JSON.stringify(t) }); },
-    // PUT /api/tasks/:id
-    updateTask(id, body) { return this.fetch('/tasks/' + id, { method: 'PUT',    body: JSON.stringify(body) }); },
-    // DELETE /api/tasks/:id
-    deleteTask(id)       { return this.fetch('/tasks/' + id, { method: 'DELETE' }); },
+    // GET /api/todos
+    getTodos()           { return this.fetch('/todos'); },
+    // POST /api/todos
+    createTodo(t)        { return this.fetch('/todos',      { method: 'POST',   body: JSON.stringify(t) }); },
+    // PUT /api/todos/:id
+    updateTodo(id, body) { return this.fetch('/todos/' + id, { method: 'PUT',    body: JSON.stringify(body) }); },
+    // DELETE /api/todos/:id
+    deleteTodo(id)       { return this.fetch('/todos/' + id, { method: 'DELETE' }); },
 
-    // Bulk upsert — try /tasks/sync, fall back to individual requests
+    // Bulk upsert — try /todos/sync, fall back to individual requests
     async bulkUpsert(todos) {
       try {
-        const r = await this.fetch('/tasks/sync', { method: 'POST', body: JSON.stringify({ tasks: todos }) });
+        const r = await this.fetch('/todos/sync', { method: 'POST', body: JSON.stringify({ todos }) });
         if (r.status !== 404 && r.status !== 405) return r;
       } catch(_) {}
       const results = [];
       for (const todo of todos) {
         try {
           let r;
-          if ((todo._id || todo._serverId) && typeof (todo._id || todo._serverId) === 'string' && (todo._id || todo._serverId).length === 24) {
-            r = await this.updateTask(todo._id || todo._serverId, todo);
-            if (!r.ok) r = await this.createTask(todo);
+          if (todo._serverId && typeof todo._serverId === 'string' && todo._serverId.length === 24) {
+            r = await this.updateTodo(todo._serverId, todo);
+            if (!r.ok) r = await this.createTodo(todo);
           } else {
-            r = await this.createTask(todo);
+            r = await this.createTodo(todo);
           }
-          if (r.ok && (r.data.task || r.data.todo || r.data)) results.push(r.data.task || r.data.todo || r.data);
+          if (r.ok && (r.data.todo || r.data)) results.push(r.data.todo || r.data);
         } catch(_) {}
       }
       return { ok: true, data: { todos: results } };
@@ -6404,11 +6388,11 @@ function checkStorageHealth(){
     // Delete all completed todos
     async deleteAllCompleted() {
       try {
-        const r = await this.fetch('/tasks', { method: 'DELETE' });
+        const r = await this.fetch('/todos', { method: 'DELETE' });
         if (r.status !== 404 && r.status !== 405) return r;
       } catch(_) {}
-      const done = (window.tasks || []).filter(t => t.done && (t._id || t._serverId));
-      for (const t of done) { try { await this.deleteTask(t._id || t._serverId); } catch(_) {} }
+      const done = (window.tasks || []).filter(t => t.done && t._serverId);
+      for (const t of done) { try { await this.deleteTodo(t._serverId); } catch(_) {} }
       return { ok: true, data: {} };
     },
   };
@@ -6456,7 +6440,7 @@ function checkStorageHealth(){
               try {
                 const { ok, data } = await API.bulkUpsert(batch);
                 if (ok) {
-                  const returned = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.todos) ? data.todos : [];
+                  const returned = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
                   this._applyServerTasks(returned);
                   toUpsert.forEach(o => doneQids.push(...o.qids));
                 } else { allSucceeded = false; }
@@ -6469,7 +6453,7 @@ function checkStorageHealth(){
           try {
             const serverId = op.payload && op.payload._serverId;
             if (serverId) {
-              const { ok } = await API.deleteTask(serverId);
+              const { ok } = await API.deleteTodo(serverId);
               if (ok || op.payload?._notFoundOk) doneQids.push(...op.qids); else allSucceeded = false;
             } else { doneQids.push(...op.qids); }
           } catch(e) { allSucceeded = false; console.warn('[Sync] delete failed:', e); }
@@ -6511,9 +6495,9 @@ function checkStorageHealth(){
 
     async _pullMerge() {
       try {
-        const { ok, data } = await API.getTasks();
+        const { ok, data } = await API.getTodos();
         if (!ok) return;
-        const serverTodos = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.todos) ? data.todos : [];
+        const serverTodos = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
         Merge.applyConflict(serverTodos);
         if (typeof window.saveAll === 'function') window.saveAll();
         if (typeof window.render  === 'function') window.render();
@@ -6583,8 +6567,7 @@ function checkStorageHealth(){
     localToApi(t) {
       return {
         localId:      t.id,
-        _id:          t._id || t._serverId || undefined,
-        _serverId:    t._id || t._serverId || undefined,
+        _serverId:    t._serverId || undefined,
         text:         String(t.text || '').substring(0, 500),
         title:        String(t.text || '').substring(0, 500),
         done:         !!t.done,
@@ -6706,13 +6689,6 @@ function checkStorageHealth(){
       if (document.getElementById('ofs-auth-overlay')) return;
       const overlay = document.createElement('div');
       overlay.id = 'ofs-auth-overlay';
-      // Pre-warm the Render server in the background (free tier cold-start ~30-50s)
-      // By the time the user fills in the form, the server will be ready
-      (async function warmServer() {
-        try {
-          await fetch(API_BASE + '/health', { method: 'GET', signal: AbortSignal.timeout(60000) });
-        } catch(_) { /* silent — just a warm-up */ }
-      })();
       overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:linear-gradient(160deg,#0a1628 0%,#0e2347 50%,#0a1628 100%);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s ease;';
 
       const card = document.createElement('div');
@@ -6806,7 +6782,7 @@ function checkStorageHealth(){
       const pass  = (document.getElementById('ofs-pass')?.value  || '').trim();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.msg('Please enter a valid email address.'); return; }
       if (!pass  || pass.length < 6) { this.msg('Password must be at least 6 characters.'); return; }
-      this.msg('Signing in… (if server is sleeping, first request may take ~30s)', 'var(--tm)');
+      this.msg('Signing in…', 'var(--tm)');
       this._setFormBusy(true);
       try {
         const { ok, data } = await API.login(email, pass);
@@ -6819,7 +6795,7 @@ function checkStorageHealth(){
         Auth.hide();
         Controller.postLogin(user);
       } catch(e) {
-        this.msg(e.isNetworkError ? 'Server is waking up (Render cold start). Please wait 30s and try again, or continue offline.' : 'Login error. Please try again.');
+        this.msg(e.isNetworkError ? 'Cannot reach server. Check connection or continue offline.' : 'Login error. Please try again.');
         console.warn('[Auth] login error:', e);
       } finally { this._setFormBusy(false); }
     },
@@ -6831,7 +6807,7 @@ function checkStorageHealth(){
       if (!name  || name.length  < 2) { this.msg('Please enter your name (min 2 chars).'); return; }
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))   { this.msg('Please enter a valid email address.'); return; }
       if (!pass  || pass.length  < 8) { this.msg('Password must be at least 8 characters.'); return; }
-      this.msg('Creating account… (server may take ~30s to wake on first request)', 'var(--tm)');
+      this.msg('Creating account…', 'var(--tm)');
       this._setFormBusy(true);
       try {
         const { ok, data } = await API.register(name, email, pass);
@@ -6844,7 +6820,7 @@ function checkStorageHealth(){
         Auth.hide();
         Controller.postSignup(user);
       } catch(e) {
-        this.msg(e.isNetworkError ? 'Server is waking up (Render cold start). Please wait 30s and try again, or continue offline.' : 'Registration error. Please try again.');
+        this.msg(e.isNetworkError ? 'Cannot reach server. Check connection or continue offline.' : 'Registration error. Please try again.');
         console.warn('[Auth] signup error:', e);
       } finally { this._setFormBusy(false); }
     },
