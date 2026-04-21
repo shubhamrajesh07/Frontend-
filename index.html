@@ -8149,5 +8149,51 @@ function checkStorageHealth(){
 
 })(); // end patchDynamicRenderers
 </script>
+  <script>
+(function () {
+  "use strict";
+
+  let analyticsInitialized = false;
+
+  function safeRenderCompletionRate() {
+    try {
+      if (typeof renderCompletionRate === "function") {
+        renderCompletionRate();
+      } else {
+        console.warn("renderCompletionRate() not found");
+      }
+    } catch (err) {
+      console.error("Render Error:", err);
+    }
+  }
+
+  function initAnalyticsSafe() {
+    if (analyticsInitialized) return;
+    analyticsInitialized = true;
+
+    setTimeout(() => {
+      safeRenderCompletionRate();
+    }, 150);
+  }
+
+  function attachAnalyticsListener() {
+    const tabs = document.querySelectorAll(".tab");
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        if ((tab.textContent || "").includes("Analytics")) {
+          analyticsInitialized = false;
+          initAnalyticsSafe();
+        }
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    attachAnalyticsListener();
+  });
+
+})();
+</script>
 </body>
 </html>
