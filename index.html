@@ -1827,7 +1827,7 @@ const CONFIG = {
     if (hostname === 'localhost' || hostname === '127.0.0.1') return 'http://localhost:5000';
     // Auto-detect: if served from Netlify, point to Render URL from meta tag if present
     const meta = document.querySelector('meta[name="api-url"]');
-    return meta ? meta.content : 'https://YOUR_RENDER_BACKEND_URL_HERE';
+    return meta ? meta.content : 'https://todo-backend-tl1v.onrender.com';
   })(),
   MAX_TASK_LEN:   500,
   MAX_NOTES_LEN:  1000,
