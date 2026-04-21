@@ -4479,7 +4479,6 @@ function renderSettingsRemList(){
   }
 }
 function closeSettingsModal(){ document.getElementById('settings-modal').classList.remove('open'); }
-document.getElementById('settings-modal').addEventListener('click',function(e){ if(e.target===this) closeSettingsModal(); });
 
 function updatePermCard(){
   const card=document.getElementById('set-perm-card');
