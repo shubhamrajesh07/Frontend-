@@ -1845,7 +1845,7 @@ const API_URL = CONFIG.API_URL;
 /* ═══════════════════════════════════════
    STORAGE KEYS
 ═══════════════════════════════════════ */
-const SK = { tasks:'mytodo_tasks_v3', lists:'mytodo_lists_v3', dark:'mytodo_dark_v3', ui:'mytodo_ui_v3', rems:'mytodo_rems_v3', activity:'mytodo_act_v3', freq:'mytodo_freq_v3', streak:'mytodo_streak_v3', lastList:'mytodo_lastlist_v3', tamperSig:'mytodo_sig_v3', progHist:'mytodo_phist_v3', rollDate:'mytodo_rolldate_v3' };
+const SK = { tasks:'mytasklibrary_tasks_v3', lists:'mytasklibrary_lists_v3', dark:'mytasklibrary_dark_v3', ui:'mytasklibrary_ui_v3', rems:'mytasklibrary_rems_v3', activity:'mytasklibrary_act_v3', freq:'mytasklibrary_freq_v3', streak:'mytasklibrary_streak_v3', lastList:'mytasklibrary_lastlist_v3', tamperSig:'mytasklibrary_sig_v3', progHist:'mytasklibrary_phist_v3', rollDate:'mytasklibrary_rolldate_v3' };
 
 /* ═══════════════════════════════════════
    🛠️ UTILITIES
@@ -1936,7 +1936,7 @@ function escUrl(s){
    Uses Web Crypto HMAC with a per-install secret key stored in localStorage.
    Far stronger than any custom hash: an attacker cannot forge the HMAC without
    knowing the secret, even if they can read localStorage. */
-const SK_HMAC_KEY = 'mytodo_hmac_key_v1';
+const SK_HMAC_KEY = 'mytasklibrary_hmac_key_v1';
 
 async function getHmacKey(){
   try{
@@ -1976,7 +1976,7 @@ async function checkTamper(){
     if(!stored){ await saveSig(); return; }
     const current = await makeSig({tasks, customLists, streakData});
     if(stored !== current) showTamperWarning();
-  }catch(e){ console.warn('[MyToDo] checkTamper error:',e); }
+  }catch(e){ console.warn('[mytasklibrary] checkTamper error:',e); }
 }
 function showTamperWarning(){
   if(document.getElementById('tamper-overlay')) return;
@@ -2054,11 +2054,11 @@ function saveAll(){
   }catch(e){
     if(e.name==='QuotaExceededError'||e.code===22){
       /* Storage full — warn user and attempt minimal save */
-      console.warn('[MyToDo] localStorage quota exceeded. Saving only tasks.');
+      console.warn('[mytasklibrary] localStorage quota exceeded. Saving only tasks.');
       try{ localStorage.setItem(SK.tasks,JSON.stringify(tasks)); }catch(_){}
       toast('⚠️ Storage nearly full! Export a backup to free space.');
     } else {
-      console.error('[MyToDo] saveAll error:',e);
+      console.error('[mytasklibrary] saveAll error:',e);
     }
   }
 }
@@ -2263,11 +2263,11 @@ function pinAndHighlight(id){
 
 /* ═══ GLOBAL ERROR BOUNDARY ═══ */
 window.addEventListener('error', e=>{
-  console.error('[MyToDo] Uncaught error:', e.message, 'at', e.filename, e.lineno);
+  console.error('[mytasklibrary] Uncaught error:', e.message, 'at', e.filename, e.lineno);
   // Don't alert user for minor errors, but log them
 });
 window.addEventListener('unhandledrejection', e=>{
-  console.error('[MyToDo] Unhandled promise rejection:', e.reason);
+  console.error('[mytasklibrary] Unhandled promise rejection:', e.reason);
   e.preventDefault(); // prevent default browser behavior
 });
 
@@ -3494,7 +3494,7 @@ function fireNotification(r,isTest=false){
   if(pinTask) body+=`\n📌 Pinned: ${pinTask.text}`;
   if('Notification' in window && Notification.permission==='granted'){
     try{
-      new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✅</text></svg>',badge:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>',tag:'mytodo-'+r.id});
+      new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✅</text></svg>',badge:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔔</text></svg>',tag:'mytasklibrary-'+r.id});
     }catch(e){ showInAppNotif(title,body); }
   } else { showInAppNotif(title,body); }
 }
@@ -4368,7 +4368,7 @@ function exportCSV(){
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='MyToDo_Progress_'+(new Date().toISOString().slice(0,10))+'.csv';
+  const a=document.createElement('a'); a.href=url; a.download='mytasklibrary_Progress_'+(new Date().toISOString().slice(0,10))+'.csv';
   a.click(); URL.revokeObjectURL(url);
   toast('⬇ CSV downloaded!');
 }
@@ -4376,9 +4376,9 @@ function exportCSV(){
 /* ════════════════════════════════════════════════════════
    ⚙️ SETTINGS SYSTEM
 ════════════════════════════════════════════════════════ */
-const SK_SETTINGS='mytodo_settings_v1';
-const SK_NOTIF_LOG='mytodo_notiflog_v1';
-const SK_BEHAVIOR='mytodo_behavior_v1';
+const SK_SETTINGS='mytasklibrary_settings_v1';
+const SK_NOTIF_LOG='mytasklibrary_notiflog_v1';
+const SK_BEHAVIOR='mytasklibrary_behavior_v1';
 
 // Default settings
 let appSettings={
@@ -4620,7 +4620,7 @@ function deliverNotif({icon,title,msg,type='smart',taskId=null,actions=[]}){
   logNotif(type);
   if('Notification' in window && Notification.permission==='granted'){
     try{
-      const n=new Notification(icon+' '+title,{body:msg,tag:'mytodo-'+type+Date.now(),icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✅</text></svg>'});
+      const n=new Notification(icon+' '+title,{body:msg,tag:'mytasklibrary-'+type+Date.now(),icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✅</text></svg>'});
       n.onclick=()=>{ window.focus(); if(taskId) highlightTask(taskId); n.close(); };
       setTimeout(()=>n.close(),8000);
     }catch(e){ showInAppCard({icon,title,msg,type,taskId,actions}); }
@@ -4834,8 +4834,8 @@ function registerServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
   /* Full SW code — push, cache, notification click */
   const swCode=`
-const CACHE='mytodo-v3';
-const FONT_CACHE='mytodo-fonts-v1';
+const CACHE='mytasklibrary-v3';
+const FONT_CACHE='mytasklibrary-fonts-v1';
 self.addEventListener('install',e=>{ self.skipWaiting(); });
 self.addEventListener('activate',e=>{
   e.waitUntil(
@@ -4868,7 +4868,7 @@ self.addEventListener('push',e=>{
   const d=e.data?e.data.json():{title:'My Task Library',body:'Task reminder!'};
   e.waitUntil(self.registration.showNotification(d.title,{
     body:d.body,icon:d.icon||'',badge:d.badge||'',
-    tag:d.tag||'mytodo',data:d
+    tag:d.tag||'mytasklibrary',data:d
   }));
 });
 self.addEventListener('notificationclick',e=>{
@@ -5120,7 +5120,7 @@ function getNotifStatusIcon(){
 /* ════════════════════════════════════════════════════
    👤 PROFILE SYSTEM
 ════════════════════════════════════════════════════ */
-const SK_PROFILE='mytodo_profile_v1';
+const SK_PROFILE='mytasklibrary_profile_v1';
 const PROFILE_EMOJIS=['😊','🧑','👨','👩','🧑‍💻','👨‍💻','👩‍💻','🦊','🐱','🐶','🦁','🐼','🦄','🎯','🚀','⚡','🔥','💎','🏆','🎓','💪','🧠','✨','🌟','😎','🥷','🦸','🧙','🎭','🌈'];
 let userProfile={name:'Log In Kar Le Bhai',tagline:'my-task-library',emoji:'👤',photo:null};
 
@@ -5336,7 +5336,7 @@ document.addEventListener('touchstart',e=>{
 /* ════════════════════════════════════════════════════
    🔒 APP LOCK SYSTEM (PIN + Pattern)
 ════════════════════════════════════════════════════ */
-const SK_LOCK='mytodo_lock_v1';
+const SK_LOCK='mytasklibrary_lock_v1';
 let lockState={enabled:false,method:'pin',hash:'',setupStep:0,setupFirst:''};
 let pinBuffer='';
 let patternSeq=[],patternDrawing=false;
@@ -5349,7 +5349,7 @@ let lockSetupMode='new'; // 'new'|'change'
    Attempt 6+:  doubles each time (60s, 120s, 240s…) up to 1 hour cap
    Counters are saved to localStorage so a page-reload doesn't reset them. */
 const LOCK_MAX_ATTEMPTS = 5;
-const SK_BRUTE = 'mytodo_brute_v1';
+const SK_BRUTE = 'mytasklibrary_brute_v1';
 let _bruteState = {attempts:0, cooldownUntil:0};
 
 function loadBruteState(){
@@ -5782,12 +5782,12 @@ function observeChartElements(){
 /* ════════════════════════════════════════════════════
    💾 BACKUP & RESTORE SYSTEM (Encrypted .todob)
 ════════════════════════════════════════════════════ */
-const SK_BACKUP_META='mytodo_backup_meta_v1';
+const SK_BACKUP_META='mytasklibrary_backup_meta_v1';
 const BACKUP_VERSION=3;
 
 /* ── AES-GCM Encryption via Web Crypto API (real encryption, not XOR) ── */
 const CRYPTO_SALT=new Uint8Array([0x4d,0x79,0x54,0x6f,0x44,0x6f,0x53,0x61,0x6c,0x74,0x76,0x31,0x21,0x40,0x23,0x24]);
-const CRYPTO_PASS='MyToDo_v3_AES_GCM_2025';
+const CRYPTO_PASS='mytasklibrary_v3_AES_GCM_2025';
 
 async function getCryptoKey(){
   const enc=new TextEncoder();
@@ -5810,7 +5810,7 @@ async function encryptData(str){
     combined.set(iv,0); combined.set(new Uint8Array(cipherBuf),iv.byteLength);
     // Mark as v3 AES with prefix
     return 'v3:'+btoa(String.fromCharCode(...combined));
-  }catch(e){ console.error('[MyToDo] Encrypt error:',e); return null; }
+  }catch(e){ console.error('[mytasklibrary] Encrypt error:',e); return null; }
 }
 
 async function decryptData(enc){
@@ -5826,21 +5826,21 @@ async function decryptData(enc){
       return new TextDecoder().decode(decBuf);
     }
     // Legacy XOR fallback (read old v2 backups)
-    const xorKey='mytodo_backup_v2_key';
+    const xorKey='mytasklibrary_backup_v2_key';
     let decoded;
     try{ decoded=decodeURIComponent(Array.from(atob(enc),c=>('%'+('00'+c.charCodeAt(0).toString(16)).slice(-2))).join('')); }
     catch(_){ decoded=decodeURIComponent(escape(atob(enc))); }
     let out='';
     for(let i=0;i<decoded.length;i++) out+=String.fromCharCode(decoded.charCodeAt(i)^xorKey.charCodeAt(i%xorKey.length));
     return out;
-  }catch(e){ console.warn('[MyToDo] Decrypt error:',e); return null; }
+  }catch(e){ console.warn('[mytasklibrary] Decrypt error:',e); return null; }
 }
 
 async function exportBackup(){
   const payload={
     version:BACKUP_VERSION,
     exportedAt:new Date().toISOString(),
-    app:'MyToDo',
+    app:'mytasklibrary',
     data:{
       tasks,customLists,activityLog,freqMap,
       streakData,progressHistory,
@@ -5856,7 +5856,7 @@ async function exportBackup(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   const date=new Date().toISOString().slice(0,10);
-  a.href=url; a.download=`MyToDo_Backup_${date}.todob`;
+  a.href=url; a.download=`mytasklibrary_Backup_${date}.todob`;
   a.click(); URL.revokeObjectURL(url);
   const meta={date:new Date().toISOString(),tasks:tasks.length,done:tasks.filter(t=>t.done).length};
   try{ localStorage.setItem(SK_BACKUP_META,JSON.stringify(meta)); }catch(e){}
@@ -5889,8 +5889,8 @@ function importBackup(e){
       const dec=await decryptData(raw);
       if(dec){ try{ payload=JSON.parse(dec); }catch(_){} }
       if(!payload){ try{ payload=JSON.parse(raw); }catch(_){} }
-      if(!payload||typeof payload!=='object'||payload.app!=='MyToDo'||!payload.data){
-        toast('❌ Not a valid MyToDo backup file'); return;
+      if(!payload||typeof payload!=='object'||payload.app!=='mytasklibrary'||!payload.data){
+        toast('❌ Not a valid mytasklibrary backup file'); return;
       }
       if(!Array.isArray(payload.data.tasks)){
         toast('❌ Backup file has no task data'); return;
@@ -5898,7 +5898,7 @@ function importBackup(e){
       pendingRestoreData=payload;
       showRestoreModal(payload);
     }catch(err){
-      console.error('[MyToDo] Backup import error:',err);
+      console.error('[mytasklibrary] Backup import error:',err);
       toast('❌ Invalid or corrupted backup file');
     }
   };
@@ -6058,7 +6058,7 @@ document.addEventListener('keydown',e=>{
 ═══════════════════════════════════════ */
 (function registerSW(){
   if(!('serviceWorker' in navigator)) return;
-  const CACHE_VER = 'mytodo-v2';
+  const CACHE_VER = 'mytasklibrary-v2';
   const swCode = `
 const CACHE_NAME = '${CACHE_VER}';
 self.addEventListener('install', e => { self.skipWaiting(); });
@@ -6100,7 +6100,7 @@ self.addEventListener('push', e => {
   const data = e.data ? e.data.json() : {title:'My Task Library', body:'Task reminder!'};
   e.waitUntil(self.registration.showNotification(data.title, {
     body: data.body, icon: data.icon||'', badge: data.badge||'',
-    tag: data.tag||'mytodo', data: data
+    tag: data.tag||'mytasklibrary', data: data
   }));
 });
 self.addEventListener('notificationclick', e => {
@@ -6212,7 +6212,7 @@ function checkStorageHealth(){
 
   /* ─── CONFIG ────────────────────────────────────────────────────────────── */
   const API_BASE        = CONFIG.API_URL + '/api';
-  const IDB_NAME        = 'mytodo_offline_v1';
+  const IDB_NAME        = 'mytasklibrary_offline_v1';
   const IDB_VER         = 1;
   const SYNC_RETRY_MS   = 5000;
   const SYNC_INTERVAL_MS = 30000;
@@ -6221,9 +6221,9 @@ function checkStorageHealth(){
   /* ─── TOKEN STORE ─────────────────────────────────────────────────────── */
   const Tok = {
     _v: null,
-    get()   { return this._v || (this._v = localStorage.getItem('__mytodo_jwt_v2')); },
-    set(t)  { this._v = t;    try { localStorage.setItem('__mytodo_jwt_v2', t); }   catch(_) {} },
-    clear() { this._v = null; try { localStorage.removeItem('__mytodo_jwt_v2'); }  catch(_) {} },
+    get()   { return this._v || (this._v = localStorage.getItem('__mytasklibrary_jwt_v2')); },
+    set(t)  { this._v = t;    try { localStorage.setItem('__mytasklibrary_jwt_v2', t); }   catch(_) {} },
+    clear() { this._v = null; try { localStorage.removeItem('__mytasklibrary_jwt_v2'); }  catch(_) {} },
     has()   { return !!this.get(); },
   };
 
@@ -7726,7 +7726,7 @@ function checkStorageHealth(){
           { label: '⚠️ Clear All Data', sub: 'Permanently resets all tasks and settings', action: () => {
             if (confirm('This will permanently delete ALL tasks, lists, and settings. Are you absolutely sure?')) {
               if (typeof SK === 'object') Object.values(SK).forEach(k => localStorage.removeItem(k));
-              ['mytodo_settings_v3','mytodo_profile_v3','mytodo_lock_v3','mytodo_brute_v3','mytodo_hmac_key_v1','__mytodo_jwt_v2'].forEach(k => localStorage.removeItem(k));
+              ['mytasklibrary_settings_v3','mytasklibrary_profile_v3','mytasklibrary_lock_v3','mytasklibrary_brute_v3','mytasklibrary_hmac_key_v1','__mytasklibrary_jwt_v2'].forEach(k => localStorage.removeItem(k));
               location.reload();
             }
           }},
@@ -7772,7 +7772,7 @@ function checkStorageHealth(){
           inp.addEventListener('change', () => {
             appSettings[s.key] = inp.checked;
             if (typeof localStorage !== 'undefined') {
-              try { localStorage.setItem('mytodo_settings_v3', JSON.stringify(appSettings)); } catch(e) {}
+              try { localStorage.setItem('mytasklibrary_settings_v3', JSON.stringify(appSettings)); } catch(e) {}
             }
           });
           const slider = document.createElement('span'); slider.className = 'toggle-slider';
@@ -7868,7 +7868,7 @@ function checkStorageHealth(){
     ════════════════════════════════════════ */
     if (typeof initSidebarRipples === 'function') initSidebarRipples();
 
-    console.log('[MyToDo] Event bindings complete ✅');
+    console.log('[mytasklibrary] Event bindings complete ✅');
   }); // end DOMContentLoaded
 
 })(); // end bindEvents IIFE
@@ -8169,7 +8169,7 @@ function checkStorageHealth(){
       }
     });
 
-    console.log('[MyTaskLibrary] Dynamic renderer patches applied ✅');
+    console.log('[mytasklibrary] Dynamic renderer patches applied ✅');
   });
 
 })(); // end patchDynamicRenderers
