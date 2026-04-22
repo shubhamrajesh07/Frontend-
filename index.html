@@ -5152,6 +5152,18 @@ function applyProfile(){
   updateHeaderAvatar();
 }
 
+  function _renderBigAva(){
+  const wrap = document.getElementById('profile-ava-big');
+  if(!wrap) return;
+  const content = wrap.querySelector('.profile-ava-content');
+  if(!content) return;
+  if(userProfile.photo){
+    content.innerHTML = `<img src="${userProfile.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    const e = userProfile.emoji || (userProfile.name||'SH').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    content.textContent = e;
+  }
+  }
 function openProfileModal(){
   applyProfile();
   document.getElementById('prof-name').value=userProfile.name||'Shubham';
