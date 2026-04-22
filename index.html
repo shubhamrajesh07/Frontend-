@@ -2743,6 +2743,7 @@ function updateWeekMonthAgg(date,due,done,pct){
 function toggleStar(id){ const t=tasks.find(t=>t.id===id); if(!t) return; t.starred=!t.starred; saveAll(); render(); }
 function togglePin(id){ const t=tasks.find(t=>t.id===id); if(!t) return; t.pinned=!t.pinned; saveAll(); render(); toast(t.pinned?'📌 Pinned!':'📌 Unpinned'); }
 function delTask(id){
+  if(!confirm('Delete this task?')return;
   const t=tasks.find(t=>t.id===id); if(!t) return;
   const forDate=t.origDue||t.due||todayStr();
   if(t.done){
@@ -7057,8 +7058,9 @@ function checkStorageHealth(){
     window.toggle     = wrapToggle(window.toggle);
     window.toggleStar = wrapToggle(window.toggleStar);
     window.togglePin  = wrapToggle(window.togglePin);
-
+    
     window.delTask = function(id) {
+     if (!confirm('Delete this task?')) return;
       const t = (window.tasks || []).find(t => t.id == id); if (!t) return;
       const serverId = t._serverId || null;
       const forDate  = t.origDue || t.due || (typeof window.todayStr === 'function' ? window.todayStr() : '');
