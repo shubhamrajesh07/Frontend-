@@ -6202,7 +6202,7 @@ function checkStorageHealth(){
    ██                                                                      ██
    ██       BACKEND INTEGRATION SYSTEM  v3.0                              ██
    ██       Render backend: todo-backend-tl1v.onrender.com                ██
-   ██       Endpoints: /api/auth/register|login  /api/todos               ██
+   ██       Endpoints: /api/auth/register|login  /api/tasks               ██
    ██       Offline-first, IndexedDB queue, conflict resolution           ██
    ██                                                                      ██
    ██████████████████████████████████████████████████████████████████████████
@@ -6374,33 +6374,33 @@ function checkStorageHealth(){
     register(name, email, pass) {
       return this.fetch('/auth/signup', { method: 'POST', body: JSON.stringify({ name, email, password: pass }) });
     },
-    // Verify token — try /auth/me, fall back to GET /todos
+    // Verify token — try /auth/me, fall back to GET /tasks
     async getMe() {
       try {
         const r = await this.fetch('/auth/me');
         if (r.status !== 404) return r;
       } catch(_) {}
-      const r = await this.fetch('/todos');
+      const r = await this.fetch('/tasks');
       return { ok: r.ok, status: r.status, data: { user: null } };
     },
 
-    // GET /api/todos
-    getTodos()           { return this.fetch('/todos'); },
-    // POST /api/todos
-    createTodo(t)        { return this.fetch('/todos',      { method: 'POST',   body: JSON.stringify(t) }); },
-    // PUT /api/todos/:id
-    updateTodo(id, body) { return this.fetch('/todos/' + id, { method: 'PUT',    body: JSON.stringify(body) }); },
-    // DELETE /api/todos/:id
-    deleteTodo(id)       { return this.fetch('/todos/' + id, { method: 'DELETE' }); },
+    // GET /api/tasks
+    getTodos()           { return this.fetch('/tasks'); },
+    // POST /api/tasks
+    createTodo(t)        { return this.fetch('/tasks',      { method: 'POST',   body: JSON.stringify(t) }); },
+    // PUT /api/tasks/:id
+    updateTodo(id, body) { return this.fetch('/tasks/' + id, { method: 'PUT',    body: JSON.stringify(body) }); },
+    // DELETE /api/tasks/:id
+    deleteTodo(id)       { return this.fetch('/tasks/' + id, { method: 'DELETE' }); },
 
-    // Bulk upsert — try /todos/sync, fall back to individual requests
-    async bulkUpsert(todos) {
+    // Bulk upsert — try /tasks/sync, fall back to individual requests
+    async bulkUpsert(tasks) {
       try {
-        const r = await this.fetch('/todos/sync', { method: 'POST', body: JSON.stringify({ todos }) });
+        const r = await this.fetch('/tasks/sync', { method: 'POST', body: JSON.stringify({ tasks }) });
         if (r.status !== 404 && r.status !== 405) return r;
       } catch(_) {}
       const results = [];
-      for (const todo of todos) {
+      for (const todo of tasks) {
         try {
           let r;
           if (todo._serverId && typeof todo._serverId === 'string' && todo._serverId.length === 24) {
@@ -6412,13 +6412,13 @@ function checkStorageHealth(){
           if (r.ok && (r.data.todo || r.data)) results.push(r.data.todo || r.data);
         } catch(_) {}
       }
-      return { ok: true, data: { todos: results } };
+      return { ok: true, data: { tasks: results } };
     },
 
-    // Delete all completed todos
+    // Delete all completed tasks
     async deleteAllCompleted() {
       try {
-        const r = await this.fetch('/todos', { method: 'DELETE' });
+        const r = await this.fetch('/tasks', { method: 'DELETE' });
         if (r.status !== 404 && r.status !== 405) return r;
       } catch(_) {}
       const done = (window.tasks || []).filter(t => t.done && t._serverId);
@@ -6470,7 +6470,7 @@ function checkStorageHealth(){
               try {
                 const { ok, data } = await API.bulkUpsert(batch);
                 if (ok) {
-                  const returned = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
+                  const returned = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.tasks) ? data.tasks : [];
                   this._applyServerTasks(returned);
                   toUpsert.forEach(o => doneQids.push(...o.qids));
                 } else { allSucceeded = false; }
@@ -6527,7 +6527,7 @@ function checkStorageHealth(){
       try {
         const { ok, data } = await API.getTodos();
         if (!ok) return;
-        const serverTodos = Array.isArray(data.todos) ? data.todos : Array.isArray(data.tasks) ? data.tasks : [];
+        const serverTodos = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.tasks) ? data.tasks : [];
         Merge.applyConflict(serverTodos);
         if (typeof window.saveAll === 'function') window.saveAll();
         if (typeof window.render  === 'function') window.render();
