@@ -1,41 +1,42 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   My Task Library — Production Service Worker v4.0
-   Offline-first: Cache-first for static assets, Network-first for API
+   My Task Library — Production Service Worker v5.0
+   ✅ Full Web Push API support (works when browser is CLOSED)
+   ✅ Background sync
+   ✅ Offline-first caching
+   ✅ Periodic sync for reminders
 ═══════════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const CACHE_NAME    = 'mytasklibrary-v4';
-const FONT_CACHE    = 'mytasklibrary-fonts-v2';
-const STATIC_CACHE  = 'mytasklibrary-static-v4';
+const CACHE_NAME   = 'mytasklibrary-v5';
+const FONT_CACHE   = 'mytasklibrary-fonts-v2';
+const STATIC_CACHE = 'mytasklibrary-static-v5';
 
-// Assets to pre-cache on install
-const PRECACHE_URLS = [
-  './',
-  './index.html',
-];
+const PRECACHE_URLS = ['./', './index.html'];
 
 // ── INSTALL ────────────────────────────────────────────────────────────
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(STATIC_CACHE).then(cache => {
-      return cache.addAll(PRECACHE_URLS).catch(err => {
-        console.warn('[SW] Pre-cache partial failure (ok on first deploy):', err);
-      });
-    })
+    caches.open(STATIC_CACHE).then(cache =>
+      cache.addAll(PRECACHE_URLS).catch(err =>
+        console.warn('[SW] Pre-cache partial failure:', err)
+      )
+    )
   );
 });
 
 // ── ACTIVATE ───────────────────────────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k !== CACHE_NAME && k !== FONT_CACHE && k !== STATIC_CACHE)
-          .map(k => caches.delete(k))
+    caches.keys()
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(k => k !== CACHE_NAME && k !== FONT_CACHE && k !== STATIC_CACHE)
+            .map(k => caches.delete(k))
+        )
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
@@ -44,13 +45,10 @@ self.addEventListener('fetch', event => {
   const url = event.request.url;
   const req = event.request;
 
-  // Skip non-GET
   if (req.method !== 'GET') return;
-
-  // Skip chrome-extension and non-http
   if (!url.startsWith('http')) return;
 
-  // ── Google Fonts: Cache-first with network fallback
+  // Google Fonts: Cache-first
   if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
     event.respondWith(
       caches.open(FONT_CACHE).then(cache =>
@@ -66,26 +64,26 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── API calls: Network-first, no cache
+  // API calls: Network-first, no cache
   if (url.includes('/api/') || url.includes('onrender.com')) {
     event.respondWith(
-      fetch(req).catch(() => {
-        return new Response(
+      fetch(req).catch(() =>
+        new Response(
           JSON.stringify({ success: false, message: 'Offline — changes queued locally.' }),
           { status: 503, headers: { 'Content-Type': 'application/json' } }
-        );
-      })
+        )
+      )
     );
     return;
   }
 
-  // ── Cloudflare analytics: skip (non-critical)
+  // Cloudflare analytics: skip
   if (url.includes('cloudflareinsights.com') || url.includes('beacon.min.js')) {
     event.respondWith(fetch(req).catch(() => new Response('', { status: 200 })));
     return;
   }
 
-  // ── HTML / App shell: Network-first with cache fallback (offline support)
+  // HTML / App shell: Network-first with cache fallback
   if (req.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/')) {
     event.respondWith(
       fetch(req)
@@ -102,7 +100,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ── Static assets (JS, CSS, images): Cache-first
+  // Static assets: Cache-first
   event.respondWith(
     caches.match(req).then(cached => {
       if (cached) return cached;
@@ -116,22 +114,45 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// ── PUSH NOTIFICATIONS ─────────────────────────────────────────────────
+// ── WEB PUSH NOTIFICATIONS ─────────────────────────────────────────────
+// This fires even when browser is closed or website is not open
 self.addEventListener('push', event => {
-  let data = { title: 'My Task Library', body: 'You have tasks pending!' };
-  try { if (event.data) data = event.data.json(); } catch(_) {}
+  let data = {
+    title: '🔔 Task Reminder',
+    body:  'You have pending tasks!',
+    icon:  './icon-192.png',
+    badge: './icon-192.png',
+    tag:   'mytasklibrary-push',
+    url:   './',
+  };
+
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (e) {
+    try {
+      if (event.data) data.body = event.data.text();
+    } catch (_) {}
+  }
+
+  const options = {
+    body:    data.body,
+    icon:    data.icon  || './icon-192.png',
+    badge:   data.badge || './icon-192.png',
+    tag:     data.tag   || 'mytasklibrary-push',
+    data:    { url: data.url || './', ...data },
+    vibrate: [200, 100, 200],
+    requireInteraction: false,
+    actions: [
+      { action: 'open',    title: '📋 Open App'  },
+      { action: 'dismiss', title: '✕ Dismiss'    },
+    ],
+  };
+
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body:  data.body,
-      icon:  data.icon  || './icon-192.png',
-      badge: data.badge || './icon-72.png',
-      tag:   data.tag   || 'mytasklibrary',
-      data,
-      actions: [
-        { action: 'open',    title: '📋 Open App' },
-        { action: 'dismiss', title: '✕ Dismiss'  },
-      ],
-    })
+    self.registration.showNotification(data.title, options)
   );
 });
 
@@ -139,10 +160,19 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   if (event.action === 'dismiss') return;
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || './';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cls => {
-      if (cls.length) return cls[0].focus();
-      return clients.openWindow('./');
+      // If app already open, focus it
+      for (const client of cls) {
+        if (client.url.includes(self.registration.scope) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open new window
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });
@@ -158,11 +188,17 @@ self.addEventListener('sync', event => {
   }
 });
 
-// ── PERIODIC SYNC (reminder checks) ───────────────────────────────────
+// ── PERIODIC SYNC (reminder checks when browser is closed) ────────────
 let _bgReminders = [];
+
 self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SET_REMINDERS') {
+  if (!event.data) return;
+  if (event.data.type === 'SET_REMINDERS') {
     _bgReminders = event.data.reminders || [];
+  }
+  // Ping from page to confirm SW is alive
+  if (event.data.type === 'PING') {
+    if (event.source) event.source.postMessage({ type: 'PONG' });
   }
 });
 
@@ -171,18 +207,23 @@ self.addEventListener('periodicsync', event => {
     event.waitUntil((async () => {
       const now  = new Date();
       const day  = now.getDay();
-      const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
       for (const r of _bgReminders) {
         if (!r.active || r.time !== hhmm) continue;
         const ok =
-          r.repeat === 'daily'    ||
-          r.repeat === 'once'     ||
-          (r.repeat === 'weekdays'  && day >= 1 && day <= 5) ||
-          (r.repeat === 'weekends'  && (day === 0 || day === 6));
+          r.repeat === 'daily'   ||
+          r.repeat === 'once'    ||
+          (r.repeat === 'weekdays' && day >= 1 && day <= 5) ||
+          (r.repeat === 'weekends' && (day === 0 || day === 6));
+
         if (ok) {
           await self.registration.showNotification('🔔 My Task Library', {
-            body: r.note || 'Task reminder!',
-            tag:  'bg-rem-' + r.id,
+            body:    r.note || 'Task reminder!',
+            icon:    './icon-192.png',
+            badge:   './icon-192.png',
+            tag:     'bg-rem-' + r.id,
+            vibrate: [200, 100, 200],
           });
         }
       }
