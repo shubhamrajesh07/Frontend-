@@ -6390,7 +6390,7 @@ function checkStorageHealth(){
     },
 
     // GET /api/tasks
-    getTodos()           { return this.fetch('/tasks'); },
+    getTodos()           { return this.fetch('/tasks?limit=200'); },
     // POST /api/tasks
     createTodo(t)        { return this.fetch('/tasks',      { method: 'POST',   body: JSON.stringify(t) }); },
     // PUT /api/tasks/:id
@@ -6414,7 +6414,7 @@ function checkStorageHealth(){
           } else {
             r = await this.createTodo(todo);
           }
-          if (r.ok && (r.data.todo || r.data)) results.push(r.data.todo || r.data);
+          if (r.ok && (r.data.task || r.data.todo || r.data)) results.push(r.data.task || r.data.todo || r.data);
         } catch(_) {}
       }
       return { ok: true, data: { tasks: results } };
@@ -6532,7 +6532,8 @@ function checkStorageHealth(){
       try {
         const { ok, data } = await API.getTodos();
         if (!ok) return;
-        const serverTodos = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.tasks) ? data.tasks : [];
+        const serverTodos = Array.isArray(data.tasks) ? data.tasks : [];
+        if (!serverTodos.length) return;
         Merge.applyConflict(serverTodos);
         if (typeof window.saveAll === 'function') window.saveAll();
         if (typeof window.render  === 'function') window.render();
@@ -6626,21 +6627,33 @@ function checkStorageHealth(){
 
     applyConflict(serverTodos) {
       if (!Array.isArray(window.tasks)) window.tasks = [];
-      const localMap  = new Map(window.tasks.map(t => [String(t._serverId || t.id), t]));
+      const localMap  = new Map(window.tasks.map(t => [String(t._serverId || ''), t]));
       const serverMap = new Map(serverTodos.map(t => [String(t._id || t.id), t]));
 
+      // Add/update tasks from server
       serverMap.forEach((st, sid) => {
         const local   = localMap.get(sid);
         const stLocal = this.serverToLocal(st);
         if (!local) {
-          const dupText = window.tasks.find(lt => !lt._serverId && lt.text === stLocal.text && !lt.synced);
-          if (dupText) { dupText._serverId = sid; dupText.synced = true; }
-          else window.tasks.push(stLocal);
+          // Check for local duplicate by text (unsynced)
+          const dupIdx = window.tasks.findIndex(lt => !lt._serverId && lt.text === stLocal.text && !lt.synced);
+          if (dupIdx >= 0) {
+            window.tasks[dupIdx] = { ...window.tasks[dupIdx], ...stLocal };
+          } else {
+            window.tasks.push(stLocal);
+          }
         } else {
+          // Server wins if newer
           const lU = local.updatedAt || local.createdAt || 0;
           const sU = stLocal.updatedAt || stLocal.createdAt || 0;
-          if (sU > lU) { Object.assign(local, stLocal); UI.showConflictToast(local.text, 'server'); }
+          if (sU >= lU) { Object.assign(local, stLocal); }
         }
+      });
+
+      // Remove local tasks deleted on server (only synced ones)
+      window.tasks = window.tasks.filter(lt => {
+        if (!lt._serverId) return true; // keep unsynced local tasks
+        return serverMap.has(String(lt._serverId));
       });
 
       if (typeof window.render === 'function') window.render();
