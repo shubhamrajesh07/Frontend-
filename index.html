@@ -9,12 +9,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="no-referrer">
 <!-- CSP: unsafe-inline required for single-file HTML; nonce-based CSP recommended when served from a dedicated server -->
-<meta http-equiv="Content-Security-Policy" content="
-default-src 'self';
-script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com;
-style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-font-src https://fonts.gstatic.com data:;
-img-src 'self' data: blob:;connect-src 'self' https://*.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com https://static.cloudflareinsights.com;object-src 'none';base-uri 'self';form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com https://static.cloudflareinsights.com; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob: data:;">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
 <!-- PWA / Android -->
@@ -22,7 +17,7 @@ img-src 'self' data: blob:;connect-src 'self' https://*.onrender.com https://fon
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="My Task Library">
-<link rel="manifest" id="pwa-manifest">
+<link rel="manifest" href="./manifest.json" id="pwa-manifest">
 <title>My Task Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1196,8 +1191,25 @@ body.offline-mode #lock-screen{ padding-top:38px; }
   <div class="sb-head">
     <div class="sb-head-row">
       <div>
-        <div class="app-title">My <span>TO Do</span></div>
-        <div class="app-by">Organize. Focus. Achieve.</div>
+        <svg viewBox="0 0 340 80" xmlns="http://www.w3.org/2000/svg" style="width:180px;height:45px;display:block;" aria-label="My Task Library">
+  <defs>
+    <linearGradient id="sb-iconBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1a1a2e"/><stop offset="100%" style="stop-color:#16213e"/></linearGradient>
+    <linearGradient id="sb-barG" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#5DCAA5"/><stop offset="100%" style="stop-color:#1D9E75"/></linearGradient>
+    <linearGradient id="sb-barP" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#AFA9EC"/><stop offset="100%" style="stop-color:#534AB7"/></linearGradient>
+    <linearGradient id="sb-barA" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#FAC775"/><stop offset="100%" style="stop-color:#BA7517"/></linearGradient>
+  </defs>
+  <rect x="2" y="4" width="52" height="52" rx="10" fill="url(#sb-iconBg)"/>
+  <rect x="9" y="32" width="8" height="14" rx="2" fill="url(#sb-barA)"/>
+  <rect x="21" y="22" width="8" height="24" rx="2" fill="url(#sb-barG)"/>
+  <rect x="33" y="27" width="8" height="19" rx="2" fill="url(#sb-barP)"/>
+  <line x1="6" y1="47" x2="48" y2="47" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+  <polyline points="13,36 25,26 37,31" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="58" cy="50" r="8" fill="#1D9E75" stroke="#fff" stroke-width="1.5"/>
+  <path d="M54.5 50 L57 53 L62 46.5" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="68" y="28" font-family="Georgia,'Times New Roman',serif" font-size="17" font-weight="700" fill="#3C3489">My Task</text>
+  <text x="68" y="47" font-family="Georgia,'Times New Roman',serif" font-size="17" font-weight="700" fill="#1D9E75">Library</text>
+  <text x="68" y="60" font-family="Georgia,serif" font-size="6.5" font-weight="400" fill="#888780" letter-spacing="1.5">ORGANIZE · FOCUS · ACHIEVE</text>
+</svg>
       </div>
       <div class="sb-head-ava" id="sb-head-ava" data-action="open-profile" title="Edit Profile" role="button" tabindex="0" aria-label="Edit Profile">
         <div class="sb-hava-inner" id="sb-head-ava-inner">SH</div>
@@ -4838,98 +4850,20 @@ function testMotiveNotif(){ const m=MOTIVE_MSGS[Math.floor(Math.random()*MOTIVE_
 ════════════════════════════════════════════════════════ */
 function registerServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
-  /* Full SW code — push, cache, notification click */
-  const swCode=`
-const CACHE='mytodo-v3';
-const FONT_CACHE='mytodo-fonts-v1';
-self.addEventListener('install',e=>{ self.skipWaiting(); });
-self.addEventListener('activate',e=>{
-  e.waitUntil(
-    caches.keys().then(keys=>
-      Promise.all(keys.filter(k=>k!==CACHE&&k!==FONT_CACHE).map(k=>caches.delete(k)))
-    ).then(()=>self.clients.claim())
-  );
-});
-self.addEventListener('fetch',e=>{
-  const url=e.request.url;
-  if(e.request.method!=='GET') return;
-  if(url.includes('fonts.googleapis.com')||url.includes('fonts.gstatic.com')){
-    e.respondWith(caches.open(FONT_CACHE).then(c=>
-      c.match(e.request).then(cached=>{
-        const fresh=fetch(e.request).then(r=>{ c.put(e.request,r.clone()); return r; });
-        return cached||fresh;
-      })
-    )); return;
-  }
-  if(e.request.mode==='navigate'||url.endsWith('.html')){
-    e.respondWith(
-      caches.open(CACHE).then(c=>
-        fetch(e.request).then(r=>{ c.put(e.request,r.clone()); return r; })
-          .catch(()=>c.match(e.request))
-      )
-    );
-  }
-});
-self.addEventListener('push',e=>{
-  const d=e.data?e.data.json():{title:'My Task Library',body:'Task reminder!'};
-  e.waitUntil(self.registration.showNotification(d.title,{
-    body:d.body,icon:d.icon||'',badge:d.badge||'',
-    tag:d.tag||'mytodo',data:d
-  }));
-});
-self.addEventListener('notificationclick',e=>{
-  e.notification.close();
-  e.waitUntil(clients.matchAll({type:'window'}).then(cls=>{
-    if(cls.length) return cls[0].focus();
-    return clients.openWindow('./');
-  }));
-});
-let bgReminders=[];
-self.addEventListener('message',e=>{
-  if(e.data&&e.data.type==='SET_REMINDERS') bgReminders=e.data.reminders||[];
-});
-self.addEventListener('periodicsync',e=>{
-  if(e.tag==='reminder-check') e.waitUntil((async()=>{
-    const now=new Date();
-    const day=now.getDay();
-    const hhmm=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-    for(const r of bgReminders){
-      if(!r.active||r.time!==hhmm) continue;
-      const ok=(r.repeat==='daily')||(r.repeat==='once')||(r.repeat==='weekdays'&&day>=1&&day<=5)||(r.repeat==='weekends'&&(day===0||day===6));
-      if(ok) await self.registration.showNotification('🔔 My Task Library',{body:r.note||'Task reminder!',tag:'bg-'+r.id});
-    }
-  })());
-});
-`;
-  /* Step 1: Try real same-origin sw.js (required for Capacitor/Play Store) */
-  try{
-    const base=window.location.href.replace(/[^/]*$/,'');
-    const swUrl=base+'sw.js';
-    navigator.serviceWorker.register(swUrl,{scope:'./'})
-      .then(r=>console.log('[SW] Registered from sw.js:',r.scope))
-      .catch(()=>{
-        /* sw.js not found — fall back to data: URL (inline, no separate file needed) */
-        _registerInlineSW(swCode);
-      });
-  }catch(e){ _registerInlineSW(swCode); }
-}
-
-function _registerInlineSW(swCode){
-  /* data: URL — supported in most modern browsers, better scope than blob: */
-  try{
-    const dataUrl='data:application/javascript;charset=utf-8,'+encodeURIComponent(swCode);
-    navigator.serviceWorker.register(dataUrl,{scope:'./'})
-      .then(r=>console.log('[SW] Registered via data: URL'))
-      .catch(()=>{
-        /* Last resort: blob: URL */
-        try{
-          const blob=new Blob([swCode],{type:'application/javascript'});
-          navigator.serviceWorker.register(URL.createObjectURL(blob))
-            .then(()=>console.log('[SW] Registered via blob: URL (standalone mode)'))
-            .catch(e=>console.warn('[SW] All registration strategies failed:',e));
-        }catch(e2){}
-      });
-  }catch(e){ console.warn('[SW] Inline SW not supported:',e); }
+  // Primary: use the real sw.js file
+  navigator.serviceWorker.register('./sw.js', {scope: './'})
+    .then(reg => {
+      console.log('[SW] registerServiceWorker: sw.js registered');
+      if(reg.sync) reg.sync.register('sync-tasks').catch(()=>{});
+      // Send reminders list to SW for background notifications
+      if(navigator.serviceWorker.controller){
+        navigator.serviceWorker.controller.postMessage({type:'SET_REMINDERS', reminders: reminders.filter(r=>r.active)});
+      }
+    })
+    .catch(() => {
+      // Fallback inline handled by bottom IIFE
+      console.warn('[SW] sw.js not found, fallback will register inline SW');
+    });
 }
 
 /* ════════════════════════════════════════════════════════
@@ -6029,30 +5963,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-/* ═══════════════════════════════════════
-   📱 PWA MANIFEST — injected dynamically
-   (required for Capacitor + Play Store)
-═══════════════════════════════════════ */
-(function injectPWAManifest(){
-  const manifest = {
-    name: 'My Task Library',
-    short_name: 'Task Library',
-    description: 'My Task Library — Smart Personal Task Manager',
-    start_url: '.',
-    display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#0078d4',
-    orientation: 'portrait-primary',
-    icons: [
-      { src: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22><rect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22%230078d4%22/><text y=%22140%22 x=%2296%22 text-anchor=%22middle%22 font-size=%22120%22>✅</text></svg>', sizes: '192x192', type: 'image/svg+xml' },
-      { src: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><rect width=%22512%22 height=%22512%22 rx=%22100%22 fill=%22%230078d4%22/><text y=%22380%22 x=%22256%22 text-anchor=%22middle%22 font-size=%22320%22>✅</text></svg>', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
-    ]
-  };
-  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const el = document.getElementById('pwa-manifest');
-  if(el) el.href = url;
-})();
+/* PWA Manifest: loaded from manifest.json (static file) */
 
 /* ═══════════════════════════════════════
    🔧 SERVICE WORKER REGISTRATION
@@ -6064,77 +5975,14 @@ document.addEventListener('keydown',e=>{
 ═══════════════════════════════════════ */
 (function registerSW(){
   if(!('serviceWorker' in navigator)) return;
-  const CACHE_VER = 'mytodo-v2';
-  const swCode = `
-const CACHE_NAME = '${CACHE_VER}';
-self.addEventListener('install', e => { self.skipWaiting(); });
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
-});
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  // Only intercept GET requests
-  if(e.request.method !== 'GET') return;
-  // Network-first for Google Fonts (always fresh), cache-first for everything else
-  if(url.includes('fonts.google') || url.includes('fonts.gstatic')) {
-    e.respondWith(
-      caches.open(CACHE_NAME).then(cache =>
-        fetch(e.request).then(res => { cache.put(e.request, res.clone()); return res; })
-          .catch(() => cache.match(e.request))
-      )
-    );
-    return;
-  }
-  // Cache-first for same-origin HTML/assets (offline support)
-  if(url.startsWith(self.location.origin) || url.startsWith('blob:')) {
-    e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-        if(res && res.status === 200) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }))
-    );
-  }
-});
-self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {title:'My Task Library', body:'Task reminder!'};
-  e.waitUntil(self.registration.showNotification(data.title, {
-    body: data.body, icon: data.icon||'', badge: data.badge||'',
-    tag: data.tag||'mytodo', data: data
-  }));
-});
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(clients.matchAll({type:'window'}).then(cls => {
-    if(cls.length) return cls[0].focus();
-    return clients.openWindow('./');
-  }));
-});
-`;
-  try{
-    // Strategy 1: same-origin data: URL — accepted by Chrome/Android WebView
-    const dataUrl = 'data:application/javascript;charset=utf-8,' + encodeURIComponent(swCode);
-    navigator.serviceWorker.register(dataUrl, {scope: './'})
-      .then(reg => { console.log('[SW] Registered via data: URL, scope:', reg.scope); })
-      .catch(err => {
-        console.warn('[SW] data: URL failed, trying blob:', err);
-        // Strategy 2: blob: URL — works in browsers that allow it
-        try{
-          const blob = new Blob([swCode], {type:'application/javascript'});
-          const blobUrl = URL.createObjectURL(blob);
-          navigator.serviceWorker.register(blobUrl, {scope: './'})
-            .then(reg => { console.log('[SW] Registered via blob: URL, scope:', reg.scope); })
-            .catch(e2 => console.warn('[SW] Registration failed entirely:', e2));
-        }catch(e3){ console.warn('[SW] Blob SW not supported:', e3); }
-      });
-  }catch(e){ console.warn('[SW] SW registration error:', e); }
-})();
+  navigator.serviceWorker.register('./sw.js', {scope: './'})
+    .then(r => { console.log('[SW] sw.js registered (bottom IIFE), scope:', r.scope); })
+    .catch(err => {
+      console.warn('[SW] sw.js failed, using inline blob:', err);
+      const sc=`const C='mtl-v4';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==C).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=e.request.url;if(u.includes('/api/')||u.includes('onrender.com')){e.respondWith(fetch(e.request).catch(()=>new Response(JSON.stringify({offline:true}),{status:503,headers:{'Content-Type':'application/json'}})));return;}e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request).then(r=>{if(r&&r.status===200)caches.open(C).then(cc=>cc.put(e.request,r.clone()));return r;})));});self.addEventListener('push',e=>{const d=e.data?e.data.json():{title:'My Task Library',body:'Reminder!'};e.waitUntil(self.registration.showNotification(d.title,{body:d.body}));});self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window'}).then(c=>{if(c.length)return c[0].focus();return clients.openWindow('./');}));});`;
+      try{const b=new Blob([sc],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'./'}).then(()=>console.log('[SW] inline blob registered')).catch(e2=>console.warn('[SW] all failed:',e2));}catch(e3){}
+    });
+})()
 
 /* ═══════════════════════════════════════
    📱 CAPACITOR / ANDROID BRIDGE DETECTION
