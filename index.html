@@ -9,7 +9,12 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="no-referrer">
 <!-- CSP: unsafe-inline required for single-file HTML; nonce-based CSP recommended when served from a dedicated server -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com https://static.cloudflareinsights.com; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob: data:;">
+<meta http-equiv="Content-Security-Policy" content="
+default-src 'self';
+script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+font-src https://fonts.gstatic.com data:;
+img-src 'self' data: blob:;connect-src 'self' https://*.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com https://static.cloudflareinsights.com;object-src 'none';base-uri 'self';form-action 'self';">
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
 <!-- PWA / Android -->
@@ -17,7 +22,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="My Task Library">
-<link rel="manifest" href="./manifest.json" id="pwa-manifest">
+<link rel="manifest" id="pwa-manifest">
 <title>My Task Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -64,7 +69,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-
   border-top:1px solid var(--bdr);background:var(--sb);
 }
 /* Compact icon-row for Settings + Export on mobile */
-  <button onclick="subscribeUser()">Enable Notifications</button>
 .sb-foot-actions{display:flex;gap:6px;margin-bottom:8px;}
 /* ═══ SIDEBAR FOOTER ICON BUTTONS — Animated ═══ */
 .sb-foot-icon-btn{
@@ -1192,25 +1196,8 @@ body.offline-mode #lock-screen{ padding-top:38px; }
   <div class="sb-head">
     <div class="sb-head-row">
       <div>
-        <svg viewBox="0 0 340 80" xmlns="http://www.w3.org/2000/svg" style="width:180px;height:45px;display:block;" aria-label="My Task Library">
-  <defs>
-    <linearGradient id="sb-iconBg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1a1a2e"/><stop offset="100%" style="stop-color:#16213e"/></linearGradient>
-    <linearGradient id="sb-barG" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#5DCAA5"/><stop offset="100%" style="stop-color:#1D9E75"/></linearGradient>
-    <linearGradient id="sb-barP" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#AFA9EC"/><stop offset="100%" style="stop-color:#534AB7"/></linearGradient>
-    <linearGradient id="sb-barA" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#FAC775"/><stop offset="100%" style="stop-color:#BA7517"/></linearGradient>
-  </defs>
-  <rect x="2" y="4" width="52" height="52" rx="10" fill="url(#sb-iconBg)"/>
-  <rect x="9" y="32" width="8" height="14" rx="2" fill="url(#sb-barA)"/>
-  <rect x="21" y="22" width="8" height="24" rx="2" fill="url(#sb-barG)"/>
-  <rect x="33" y="27" width="8" height="19" rx="2" fill="url(#sb-barP)"/>
-  <line x1="6" y1="47" x2="48" y2="47" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
-  <polyline points="13,36 25,26 37,31" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="58" cy="50" r="8" fill="#1D9E75" stroke="#fff" stroke-width="1.5"/>
-  <path d="M54.5 50 L57 53 L62 46.5" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="68" y="28" font-family="Georgia,'Times New Roman',serif" font-size="17" font-weight="700" fill="#3C3489">My Task</text>
-  <text x="68" y="47" font-family="Georgia,'Times New Roman',serif" font-size="17" font-weight="700" fill="#1D9E75">Library</text>
-  <text x="68" y="60" font-family="Georgia,serif" font-size="6.5" font-weight="400" fill="#888780" letter-spacing="1.5">ORGANIZE · FOCUS · ACHIEVE</text>
-</svg>
+        <div class="app-title">My <span>TO Do</span></div>
+        <div class="app-by">Organize. Focus. Achieve.</div>
       </div>
       <div class="sb-head-ava" id="sb-head-ava" data-action="open-profile" title="Edit Profile" role="button" tabindex="0" aria-label="Edit Profile">
         <div class="sb-hava-inner" id="sb-head-ava-inner">SH</div>
@@ -1763,492 +1750,7 @@ body.offline-mode #lock-screen{ padding-top:38px; }
   </div>
   <div class="lock-msg" id="lock-msg" role="alert" aria-live="assertive"></div>
 </div>
-/* ═══════════════════════════════════════════════════════════════════════════
-   PASTE THIS ENTIRE BLOCK just before </body> in index.html
-   
-   WHAT IT DOES:
-   1.  Auth-aware Account section in Settings (Sign In / Logout button)
-   2.  Full Web Push subscription — works when browser is CLOSED
-   3.  Fetches VAPID public key from your backend automatically
-   4.  Sends push subscription to POST /api/push/subscribe
-   5.  Patches openSettingsModal so Account card is always up-to-date
-   6.  Zero breaking changes to existing UI
-═══════════════════════════════════════════════════════════════════════════ */
 
-/* ─────────────────────────────────────────────────────────────────────
-   STEP 1: PASTE THIS INTO index.html  →  find:
-
-       <!-- ═══ LOCK SETUP MODAL ═══ -->
-
-   and DIRECTLY ABOVE that line, paste this entire <script> block:
-───────────────────────────────────────────────────────────────────────── */
-
-
-<script>
-  const PUBLIC_VAPID_KEY = "BE5X--SkMy4A3OIGEVonAmNJW4hlz88cyi189addn43LKP6x26vpXBVEXTomLCr0fkzeq_n1LbgNnrcrPIdoC7c";
-// ═══════════════════════════════════════════════════════════════════════
-//  🔐 AUTH-AWARE ACCOUNT CARD + 🔔 WEB PUSH SYSTEM
-//  Drop-in upgrade — no existing code touched
-// ═══════════════════════════════════════════════════════════════════════
-(function PushAndAuthUpgrade() {
-  'use strict';
-
-  // ── Configuration ────────────────────────────────────────────────────
-  const BACKEND = window.CONFIG && CONFIG.API_URL
-    ? CONFIG.API_URL
-    : 'https://todo-backend-tl1v.onrender.com';   // ← update if needed
-
-  // ── Token helpers (re-uses OfflineFirstSystem's __mytodo_jwt_v2) ─────
-  const getToken = () => {
-    try { return localStorage.getItem('__mytodo_jwt_v2'); } catch(_) { return null; }
-  };
-  const isLoggedIn = () => !!getToken();
-
-  // ── Auth-headers helper ───────────────────────────────────────────────
-  function authHeaders() {
-    const tok = getToken();
-    return {
-      'Content-Type': 'application/json',
-      ...(tok ? { 'Authorization': 'Bearer ' + tok } : {}),
-    };
-  }
-
-  // ──────────────────────────────────────────────────────────────────────
-  //  AUTH-AWARE ACCOUNT CARD
-  //  Injects Sign In / Logout button into Settings → Account section
-  // ──────────────────────────────────────────────────────────────────────
-  function buildAccountCard() {
-    const card = document.getElementById('settings-account-card');
-    if (!card) return;
-    card.innerHTML = '';
-
-    if (isLoggedIn()) {
-      // ── Logged-in state ────────────────────────────────────────────────
-      const userName = (window.userProfile && window.userProfile.name) || 'User';
-
-      // User info row
-      const infoRow = document.createElement('div');
-      infoRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 2px;margin-bottom:12px;border-bottom:1px solid var(--bdr);';
-      const ava = document.createElement('div');
-      ava.style.cssText = 'width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;';
-      ava.textContent = userName.charAt(0).toUpperCase();
-      const uinfo = document.createElement('div');
-      const unEl = document.createElement('div');
-      unEl.style.cssText = 'font-size:13px;font-weight:700;color:var(--t1);';
-      unEl.textContent = userName;
-      const syncEl = document.createElement('div');
-      syncEl.style.cssText = 'font-size:11px;color:#107c10;margin-top:1px;';
-      syncEl.textContent = '✅ Signed in — sync active';
-      uinfo.appendChild(unEl);
-      uinfo.appendChild(syncEl);
-      infoRow.appendChild(ava);
-      infoRow.appendChild(uinfo);
-      card.appendChild(infoRow);
-
-      // Push notification toggle row
-      const pushRow = document.createElement('div');
-      pushRow.className = 'set-row';
-      pushRow.style.marginBottom = '12px';
-      const pushInfo = document.createElement('div');
-      pushInfo.className = 'set-info';
-      const pushLbl = document.createElement('div');
-      pushLbl.className = 'set-lbl';
-      pushLbl.textContent = '🔔 Push Notifications';
-      const pushSub = document.createElement('div');
-      pushSub.className = 'set-sub';
-      pushSub.id = 'push-status-sub';
-      pushSub.textContent = 'Receive alerts even when app is closed';
-      pushInfo.appendChild(pushLbl);
-      pushInfo.appendChild(pushSub);
-      const pushBtn = document.createElement('button');
-      pushBtn.className = 'btn btnp';
-      pushBtn.id = 'push-toggle-btn';
-      pushBtn.style.cssText = 'font-size:12px;padding:5px 12px;flex-shrink:0;';
-      pushBtn.textContent = '🔔 Enable';
-      pushBtn.addEventListener('click', () => handlePushToggle(pushBtn, pushSub));
-      pushRow.appendChild(pushInfo);
-      pushRow.appendChild(pushBtn);
-      card.appendChild(pushRow);
-
-      // Update push button state
-      updatePushButtonState(pushBtn, pushSub);
-
-      // Change Password row
-      makeAccountActionRow(card, '🔑', 'Change Password', 'Update your account password', 'Change', 'var(--blue)', () => {
-        if (typeof closeSettingsModal === 'function') closeSettingsModal();
-        setTimeout(() => { if (typeof showAccountModal === 'function') showAccountModal('change-password'); }, 300);
-      });
-
-      // Logout button
-      const logoutRow = document.createElement('div');
-      logoutRow.className = 'set-row';
-      logoutRow.style.marginTop = '8px';
-      const logoutInfo = document.createElement('div');
-      logoutInfo.className = 'set-info';
-      const logoutLbl = document.createElement('div');
-      logoutLbl.className = 'set-lbl';
-      logoutLbl.textContent = '🚪 Sign Out';
-      const logoutSub = document.createElement('div');
-      logoutSub.className = 'set-sub';
-      logoutSub.textContent = 'Log out from this device';
-      logoutInfo.appendChild(logoutLbl);
-      logoutInfo.appendChild(logoutSub);
-      const logoutBtn = document.createElement('button');
-      logoutBtn.className = 'btn';
-      logoutBtn.style.cssText = 'font-size:12px;padding:5px 14px;background:#d13438;color:#fff;border:none;border-radius:6px;cursor:pointer;flex-shrink:0;font-family:inherit;font-weight:700;';
-      logoutBtn.textContent = 'Sign Out';
-      logoutBtn.addEventListener('click', handleLogout);
-      logoutRow.appendChild(logoutInfo);
-      logoutRow.appendChild(logoutBtn);
-      card.appendChild(logoutRow);
-
-    } else {
-      // ── Logged-out state ───────────────────────────────────────────────
-      const offRow = document.createElement('div');
-      offRow.className = 'set-row';
-      const info = document.createElement('div');
-      info.className = 'set-info';
-      const lbl = document.createElement('div');
-      lbl.className = 'set-lbl';
-      lbl.textContent = '🔐 Not signed in';
-      const sub = document.createElement('div');
-      sub.className = 'set-sub';
-      sub.textContent = 'Sign in to sync tasks across devices';
-      info.appendChild(lbl);
-      info.appendChild(sub);
-      const btn = document.createElement('button');
-      btn.className = 'btn btnp';
-      btn.style.cssText = 'font-size:12px;padding:5px 14px;flex-shrink:0;font-weight:700;';
-      btn.textContent = '🔐 Sign In';
-      btn.addEventListener('click', () => {
-        if (typeof closeSettingsModal === 'function') closeSettingsModal();
-        // Show the existing OfflineFirstSystem auth overlay
-        setTimeout(() => {
-          const authOverlay = document.getElementById('ofs-auth-overlay');
-          if (authOverlay) {
-            authOverlay.style.display = 'flex';
-          } else if (typeof OFS_Auth !== 'undefined') {
-            // Re-show auth by hiding offline mode flag
-            window.__ofsOfflineMode = false;
-            const Auth = { show: () => {
-              if (document.getElementById('ofs-auth-overlay')) return;
-              // Trigger the existing Auth.show() from OfflineFirstSystem
-              if (window._ofsAuth && typeof window._ofsAuth.show === 'function') {
-                window._ofsAuth.show();
-              }
-            }};
-            // Fallback: reload to trigger auth flow
-            if (typeof window.toast === 'function') window.toast('Redirecting to Sign In…');
-            setTimeout(() => location.reload(), 1200);
-          }
-        }, 300);
-      });
-      offRow.appendChild(info);
-      offRow.appendChild(btn);
-      card.appendChild(offRow);
-    }
-  }
-
-  // ── Helper: action row ────────────────────────────────────────────────
-  function makeAccountActionRow(card, icon, label, sub, btnText, btnColor, onClick) {
-    const row = document.createElement('div');
-    row.className = 'set-row';
-    row.style.marginBottom = '10px';
-    const info = document.createElement('div'); info.className = 'set-info';
-    const lbl  = document.createElement('div'); lbl.className  = 'set-lbl'; lbl.textContent = icon + ' ' + label;
-    const subEl = document.createElement('div'); subEl.className = 'set-sub'; subEl.textContent = sub;
-    info.appendChild(lbl); info.appendChild(subEl);
-    const btn = document.createElement('button');
-    btn.className = 'btn';
-    btn.style.cssText = `font-size:12px;padding:5px 12px;background:${btnColor};color:#fff;border:none;flex-shrink:0;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;`;
-    btn.textContent = btnText;
-    btn.addEventListener('click', onClick);
-    row.appendChild(info); row.appendChild(btn);
-    card.appendChild(row);
-  }
-
-  // ── Logout handler ─────────────────────────────────────────────────────
-  async function handleLogout() {
-    if (!confirm('Sign out? Your tasks remain safely on the server.')) return;
-    if (typeof closeSettingsModal === 'function') closeSettingsModal();
-
-    // Revoke token on backend
-    const tok = getToken();
-    if (tok) {
-      try {
-        await fetch(BACKEND + '/api/auth/logout', {
-          method: 'POST',
-          headers: authHeaders(),
-        });
-      } catch(_) {}
-    }
-
-    // Clear token
-    try { localStorage.removeItem('__mytodo_jwt_v2'); } catch(_) {}
-
-    // Unsubscribe push if active
-    try {
-      if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await fetch(BACKEND + '/api/push/subscribe', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', ...(tok ? { 'Authorization': 'Bearer ' + tok } : {}) },
-            body: JSON.stringify({ endpoint: sub.endpoint }),
-          });
-          await sub.unsubscribe();
-        }
-      }
-    } catch(_) {}
-
-    // Reset profile display
-    if (window.userProfile) {
-      window.userProfile.name  = 'Log In Kar Le Bhai';
-      window.userProfile.photo = null;
-      window.userProfile.emoji = '👤';
-      if (typeof window.applyProfile === 'function') window.applyProfile();
-    }
-
-    if (typeof window.toast === 'function') window.toast('👋 Signed out successfully.');
-
-    // Show auth overlay after short delay
-    setTimeout(() => {
-      window.__ofsOfflineMode = false;
-      // Force page reload to re-trigger auth flow cleanly
-      location.reload();
-    }, 1000);
-  }
-
-  // ──────────────────────────────────────────────────────────────────────
-  //  WEB PUSH SUBSCRIPTION SYSTEM
-  // ──────────────────────────────────────────────────────────────────────
-
-  let _vapidPublicKey = null;
-
-  // Convert base64 VAPID key to Uint8Array for pushManager.subscribe
-  function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const output  = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
-    return output;
-  }
-
-  // Fetch VAPID public key from backend
-  async function getVapidPublicKey() {
-    if (_vapidPublicKey) return _vapidPublicKey;
-    try {
-      const res = await fetch(BACKEND + '/api/push/vapid-public-key', {
-        headers: authHeaders(),
-      });
-      if (!res.ok) throw new Error('Could not fetch VAPID key');
-      const data = await res.json();
-      _vapidPublicKey = data.publicKey;
-      return _vapidPublicKey;
-    } catch(e) {
-      console.error('[Push] VAPID key fetch failed:', e);
-      return null;
-    }
-  }
-
-  // Update push button state based on current subscription
-  async function updatePushButtonState(btn, sub) {
-    if (!btn) return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      btn.textContent = '❌ Not Supported';
-      btn.disabled = true;
-      if (sub) sub.textContent = 'Push notifications not supported in this browser';
-      return;
-    }
-    try {
-      const reg        = await navigator.serviceWorker.ready;
-      const existing   = await reg.pushManager.getSubscription();
-      const permState  = Notification.permission;
-
-      if (existing && permState === 'granted') {
-        btn.textContent = '🔕 Disable Push';
-        btn.style.background = '#faa800';
-        if (sub) sub.textContent = '✅ Active — you\'ll be notified even when app is closed';
-      } else if (permState === 'denied') {
-        btn.textContent = '🚫 Blocked';
-        btn.disabled = true;
-        if (sub) sub.textContent = 'Notifications blocked in browser settings';
-      } else {
-        btn.textContent = '🔔 Enable Push';
-        btn.style.background = 'var(--blue)';
-        if (sub) sub.textContent = 'Receive alerts even when the app is closed';
-      }
-    } catch(e) {
-      btn.textContent = '🔔 Enable Push';
-    }
-  }
-
-  // Handle push enable/disable toggle
-  async function handlePushToggle(btn, subEl) {
-    if (!isLoggedIn()) {
-      if (typeof window.toast === 'function') window.toast('⚠️ Sign in first to enable push notifications.');
-      return;
-    }
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      if (typeof window.toast === 'function') window.toast('❌ Push notifications not supported in this browser.');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = '⏳ Processing…';
-
-    try {
-      const reg      = await navigator.serviceWorker.ready;
-      const existing = await reg.pushManager.getSubscription();
-
-      if (existing) {
-        // ── Disable: unsubscribe ─────────────────────────────────────────
-        await fetch(BACKEND + '/api/push/subscribe', {
-          method: 'DELETE',
-          headers: authHeaders(),
-          body: JSON.stringify({ endpoint: existing.endpoint }),
-        });
-        await existing.unsubscribe();
-        if (typeof window.toast === 'function') window.toast('🔕 Push notifications disabled.');
-        if (subEl) subEl.textContent = 'Receive alerts even when the app is closed';
-        btn.textContent = '🔔 Enable Push';
-        btn.style.background = 'var(--blue)';
-        btn.disabled = false;
-        return;
-      }
-
-      // ── Enable: request permission then subscribe ─────────────────────
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        if (typeof window.toast === 'function') window.toast('🚫 Notification permission denied.');
-        btn.textContent = '🚫 Blocked';
-        btn.disabled = true;
-        return;
-      }
-
-      // Get VAPID public key from backend
-      const vapidKey = await getVapidPublicKey();
-      if (!vapidKey) {
-        if (typeof window.toast === 'function') window.toast('❌ Could not get push config from server.');
-        btn.textContent = '🔔 Enable Push';
-        btn.disabled = false;
-        return;
-      }
-
-      // Subscribe to push
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly:      true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      });
-
-      // Send subscription to backend
-      const res = await fetch(BACKEND + '/api/push/subscribe', {
-        method:  'POST',
-        headers: authHeaders(),
-        body:    JSON.stringify({ subscription: subscription.toJSON() }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Subscription failed on server');
-      }
-
-      if (typeof window.toast === 'function') window.toast('🔔 Push notifications enabled! You\'ll be notified even when the app is closed.');
-      if (subEl) subEl.textContent = '✅ Active — you\'ll be notified even when app is closed';
-      btn.textContent = '🔕 Disable Push';
-      btn.style.background = '#faa800';
-
-    } catch(e) {
-      console.error('[Push] toggle error:', e);
-      if (typeof window.toast === 'function') window.toast('❌ Push setup failed: ' + e.message);
-      btn.textContent = '🔔 Enable Push';
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  // ── Send a push notification to self (for testing / task triggers) ────
-  window.sendSelfPush = async function(title, body, url) {
-    if (!isLoggedIn()) return;
-    try {
-      await fetch(BACKEND + '/api/push/send', {
-        method:  'POST',
-        headers: authHeaders(),
-        body:    JSON.stringify({
-          title: title || 'Task Reminder',
-          body:  body  || 'You have pending tasks!',
-          url:   url   || './',
-          tag:   'self-push',
-        }),
-      });
-    } catch(e) {
-      console.warn('[Push] sendSelfPush error:', e);
-    }
-  };
-
-  // ── Hook into openSettingsModal to rebuild account card every time ────
-  const _origOpenSettings = window.openSettingsModal;
-  window.openSettingsModal = function() {
-    if (typeof _origOpenSettings === 'function') _origOpenSettings.apply(this, arguments);
-    // Rebuild account card so it's always auth-aware
-    setTimeout(buildAccountCard, 60);
-  };
-
-  // ── Auto-init on page load ────────────────────────────────────────────
-  document.addEventListener('DOMContentLoaded', function() {
-    // Request push permission when user is already logged in
-    // (non-intrusive — only runs if already subscribed or permission already granted)
-    if (isLoggedIn() && 'serviceWorker' in navigator && 'PushManager' in window) {
-      navigator.serviceWorker.ready.then(async reg => {
-        const existing = await reg.pushManager.getSubscription().catch(() => null);
-        if (existing && Notification.permission === 'granted') {
-          // Re-send subscription to backend in case it was lost (e.g. server restart)
-          const vapidKey = await getVapidPublicKey().catch(() => null);
-          if (vapidKey) {
-            fetch(BACKEND + '/api/push/subscribe', {
-              method:  'POST',
-              headers: authHeaders(),
-              body:    JSON.stringify({ subscription: existing.toJSON() }),
-            }).catch(() => {});
-          }
-        }
-      }).catch(() => {});
-    }
-  });
-
-  // ── Expose for external use ────────────────────────────────────────────
-  window._pushSystem = { buildAccountCard, handlePushToggle, updatePushButtonState, handleLogout };
-
-  console.log('[PushAndAuthUpgrade] ✅ Loaded');
-})();
-     async function subscribeUser() {
-  const reg = await navigator.serviceWorker.register("/sw.js");
-
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-  });
-
-  await fetch("hhttps://todo-backend-tl1v.onrender.com", {
-    method: "POST",
-    body: JSON.stringify(sub),
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-}
-     function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
-</script>
 <!-- ═══ LOCK SETUP MODAL ═══ -->
 <div class="mo" id="lock-setup-modal" style="z-index:500;" role="dialog" aria-modal="true" aria-label="Setup lock">
   <div class="lock-screen" style="position:relative;inset:auto;border-radius:20px;max-width:360px;width:calc(100vw - 32px);padding:28px 20px;">
@@ -5336,20 +4838,98 @@ function testMotiveNotif(){ const m=MOTIVE_MSGS[Math.floor(Math.random()*MOTIVE_
 ════════════════════════════════════════════════════════ */
 function registerServiceWorker(){
   if(!('serviceWorker' in navigator)) return;
-  // Primary: use the real sw.js file
-  navigator.serviceWorker.register('./sw.js', {scope: './'})
-    .then(reg => {
-      console.log('[SW] registerServiceWorker: sw.js registered');
-      if(reg.sync) reg.sync.register('sync-tasks').catch(()=>{});
-      // Send reminders list to SW for background notifications
-      if(navigator.serviceWorker.controller){
-        navigator.serviceWorker.controller.postMessage({type:'SET_REMINDERS', reminders: reminders.filter(r=>r.active)});
-      }
-    })
-    .catch(() => {
-      // Fallback inline handled by bottom IIFE
-      console.warn('[SW] sw.js not found, fallback will register inline SW');
-    });
+  /* Full SW code — push, cache, notification click */
+  const swCode=`
+const CACHE='mytodo-v3';
+const FONT_CACHE='mytodo-fonts-v1';
+self.addEventListener('install',e=>{ self.skipWaiting(); });
+self.addEventListener('activate',e=>{
+  e.waitUntil(
+    caches.keys().then(keys=>
+      Promise.all(keys.filter(k=>k!==CACHE&&k!==FONT_CACHE).map(k=>caches.delete(k)))
+    ).then(()=>self.clients.claim())
+  );
+});
+self.addEventListener('fetch',e=>{
+  const url=e.request.url;
+  if(e.request.method!=='GET') return;
+  if(url.includes('fonts.googleapis.com')||url.includes('fonts.gstatic.com')){
+    e.respondWith(caches.open(FONT_CACHE).then(c=>
+      c.match(e.request).then(cached=>{
+        const fresh=fetch(e.request).then(r=>{ c.put(e.request,r.clone()); return r; });
+        return cached||fresh;
+      })
+    )); return;
+  }
+  if(e.request.mode==='navigate'||url.endsWith('.html')){
+    e.respondWith(
+      caches.open(CACHE).then(c=>
+        fetch(e.request).then(r=>{ c.put(e.request,r.clone()); return r; })
+          .catch(()=>c.match(e.request))
+      )
+    );
+  }
+});
+self.addEventListener('push',e=>{
+  const d=e.data?e.data.json():{title:'My Task Library',body:'Task reminder!'};
+  e.waitUntil(self.registration.showNotification(d.title,{
+    body:d.body,icon:d.icon||'',badge:d.badge||'',
+    tag:d.tag||'mytodo',data:d
+  }));
+});
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window'}).then(cls=>{
+    if(cls.length) return cls[0].focus();
+    return clients.openWindow('./');
+  }));
+});
+let bgReminders=[];
+self.addEventListener('message',e=>{
+  if(e.data&&e.data.type==='SET_REMINDERS') bgReminders=e.data.reminders||[];
+});
+self.addEventListener('periodicsync',e=>{
+  if(e.tag==='reminder-check') e.waitUntil((async()=>{
+    const now=new Date();
+    const day=now.getDay();
+    const hhmm=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+    for(const r of bgReminders){
+      if(!r.active||r.time!==hhmm) continue;
+      const ok=(r.repeat==='daily')||(r.repeat==='once')||(r.repeat==='weekdays'&&day>=1&&day<=5)||(r.repeat==='weekends'&&(day===0||day===6));
+      if(ok) await self.registration.showNotification('🔔 My Task Library',{body:r.note||'Task reminder!',tag:'bg-'+r.id});
+    }
+  })());
+});
+`;
+  /* Step 1: Try real same-origin sw.js (required for Capacitor/Play Store) */
+  try{
+    const base=window.location.href.replace(/[^/]*$/,'');
+    const swUrl=base+'sw.js';
+    navigator.serviceWorker.register(swUrl,{scope:'./'})
+      .then(r=>console.log('[SW] Registered from sw.js:',r.scope))
+      .catch(()=>{
+        /* sw.js not found — fall back to data: URL (inline, no separate file needed) */
+        _registerInlineSW(swCode);
+      });
+  }catch(e){ _registerInlineSW(swCode); }
+}
+
+function _registerInlineSW(swCode){
+  /* data: URL — supported in most modern browsers, better scope than blob: */
+  try{
+    const dataUrl='data:application/javascript;charset=utf-8,'+encodeURIComponent(swCode);
+    navigator.serviceWorker.register(dataUrl,{scope:'./'})
+      .then(r=>console.log('[SW] Registered via data: URL'))
+      .catch(()=>{
+        /* Last resort: blob: URL */
+        try{
+          const blob=new Blob([swCode],{type:'application/javascript'});
+          navigator.serviceWorker.register(URL.createObjectURL(blob))
+            .then(()=>console.log('[SW] Registered via blob: URL (standalone mode)'))
+            .catch(e=>console.warn('[SW] All registration strategies failed:',e));
+        }catch(e2){}
+      });
+  }catch(e){ console.warn('[SW] Inline SW not supported:',e); }
 }
 
 /* ════════════════════════════════════════════════════════
@@ -6449,7 +6029,30 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-/* PWA Manifest: loaded from manifest.json (static file) */
+/* ═══════════════════════════════════════
+   📱 PWA MANIFEST — injected dynamically
+   (required for Capacitor + Play Store)
+═══════════════════════════════════════ */
+(function injectPWAManifest(){
+  const manifest = {
+    name: 'My Task Library',
+    short_name: 'Task Library',
+    description: 'My Task Library — Smart Personal Task Manager',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#ffffff',
+    theme_color: '#0078d4',
+    orientation: 'portrait-primary',
+    icons: [
+      { src: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22><rect width=%22192%22 height=%22192%22 rx=%2240%22 fill=%22%230078d4%22/><text y=%22140%22 x=%2296%22 text-anchor=%22middle%22 font-size=%22120%22>✅</text></svg>', sizes: '192x192', type: 'image/svg+xml' },
+      { src: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><rect width=%22512%22 height=%22512%22 rx=%22100%22 fill=%22%230078d4%22/><text y=%22380%22 x=%22256%22 text-anchor=%22middle%22 font-size=%22320%22>✅</text></svg>', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const el = document.getElementById('pwa-manifest');
+  if(el) el.href = url;
+})();
 
 /* ═══════════════════════════════════════
    🔧 SERVICE WORKER REGISTRATION
@@ -6461,14 +6064,77 @@ document.addEventListener('keydown',e=>{
 ═══════════════════════════════════════ */
 (function registerSW(){
   if(!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js', {scope: './'})
-    .then(r => { console.log('[SW] sw.js registered (bottom IIFE), scope:', r.scope); })
-    .catch(err => {
-      console.warn('[SW] sw.js failed, using inline blob:', err);
-      const sc=`const C='mtl-v4';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==C).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;const u=e.request.url;if(u.includes('/api/')||u.includes('onrender.com')){e.respondWith(fetch(e.request).catch(()=>new Response(JSON.stringify({offline:true}),{status:503,headers:{'Content-Type':'application/json'}})));return;}e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request).then(r=>{if(r&&r.status===200)caches.open(C).then(cc=>cc.put(e.request,r.clone()));return r;})));});self.addEventListener('push',e=>{const d=e.data?e.data.json():{title:'My Task Library',body:'Reminder!'};e.waitUntil(self.registration.showNotification(d.title,{body:d.body}));});self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.matchAll({type:'window'}).then(c=>{if(c.length)return c[0].focus();return clients.openWindow('./');}));});`;
-      try{const b=new Blob([sc],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'./'}).then(()=>console.log('[SW] inline blob registered')).catch(e2=>console.warn('[SW] all failed:',e2));}catch(e3){}
-    });
-})()
+  const CACHE_VER = 'mytodo-v2';
+  const swCode = `
+const CACHE_NAME = '${CACHE_VER}';
+self.addEventListener('install', e => { self.skipWaiting(); });
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  // Only intercept GET requests
+  if(e.request.method !== 'GET') return;
+  // Network-first for Google Fonts (always fresh), cache-first for everything else
+  if(url.includes('fonts.google') || url.includes('fonts.gstatic')) {
+    e.respondWith(
+      caches.open(CACHE_NAME).then(cache =>
+        fetch(e.request).then(res => { cache.put(e.request, res.clone()); return res; })
+          .catch(() => cache.match(e.request))
+      )
+    );
+    return;
+  }
+  // Cache-first for same-origin HTML/assets (offline support)
+  if(url.startsWith(self.location.origin) || url.startsWith('blob:')) {
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
+        if(res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }))
+    );
+  }
+});
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json() : {title:'My Task Library', body:'Task reminder!'};
+  e.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body, icon: data.icon||'', badge: data.badge||'',
+    tag: data.tag||'mytodo', data: data
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window'}).then(cls => {
+    if(cls.length) return cls[0].focus();
+    return clients.openWindow('./');
+  }));
+});
+`;
+  try{
+    // Strategy 1: same-origin data: URL — accepted by Chrome/Android WebView
+    const dataUrl = 'data:application/javascript;charset=utf-8,' + encodeURIComponent(swCode);
+    navigator.serviceWorker.register(dataUrl, {scope: './'})
+      .then(reg => { console.log('[SW] Registered via data: URL, scope:', reg.scope); })
+      .catch(err => {
+        console.warn('[SW] data: URL failed, trying blob:', err);
+        // Strategy 2: blob: URL — works in browsers that allow it
+        try{
+          const blob = new Blob([swCode], {type:'application/javascript'});
+          const blobUrl = URL.createObjectURL(blob);
+          navigator.serviceWorker.register(blobUrl, {scope: './'})
+            .then(reg => { console.log('[SW] Registered via blob: URL, scope:', reg.scope); })
+            .catch(e2 => console.warn('[SW] Registration failed entirely:', e2));
+        }catch(e3){ console.warn('[SW] Blob SW not supported:', e3); }
+      });
+  }catch(e){ console.warn('[SW] SW registration error:', e); }
+})();
 
 /* ═══════════════════════════════════════
    📱 CAPACITOR / ANDROID BRIDGE DETECTION
@@ -8225,7 +7891,11 @@ function checkStorageHealth(){
 
 })(); // end bindEvents IIFE
 </script>
-
+<!-- ═══════════════════════════════════════════════════════════
+     DYNAMIC RENDERER PATCHES
+     Replaces inline onclick handlers in JS-generated HTML
+     with data-* attributes for CSP compliance.
+     Runs AFTER main scripts, overrides specific functions.
 ═══════════════════════════════════════════════════════════ -->
 <script>
 (function patchDynamicRenderers() {
