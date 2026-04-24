@@ -24,14 +24,7 @@ self.addEventListener('install', event => {
     )
   );
 });
-self.addEventListener("push", e => {
-  const data = e.data.json();
 
-  self.registration.showNotification(data.title, {
-    body: data.body,
-    icon: "/icon.png"
-  });
-});
 // ── ACTIVATE ───────────────────────────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
