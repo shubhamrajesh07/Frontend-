@@ -8629,8 +8629,35 @@ function checkStorageHealth(){
 
     console.log('[MyToDo] Dynamic renderer patches applied ✅');
   });
+  function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
 
 })(); // end patchDynamicRenderers
+  const PUBLIC_VAPID_KEY = "BE5X--SkMy4A3OIGEVonAmNJW4hlz88cyi189addn43LKP6x26vpXBVEXTomLCr0fkzeq_n1LbgNnrcrPIdoC7c";
+
+async function subscribeUser() {
+  const reg = await navigator.serviceWorker.register("/sw.js");
+
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+  });
+
+  await fetch("https://your-backend-url.com/subscribe", {
+    method: "POST",
+    body: JSON.stringify(sub),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+}
 </script>
 </body>
 </html>
