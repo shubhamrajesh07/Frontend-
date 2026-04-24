@@ -8621,32 +8621,23 @@ function checkStorageHealth(){
         }
       });
     }
-
     /* ════════════════════════════════════════════════════════
-       PATCH: history view toggle buttons (in-DOM buttons)
-    ════════════════════════════════════════════════════════ */
-    
-    ['hv-week-btn', 'hv-month-btn'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn && btn.dataset.histview) {
-        // Already bound in bindEvents; just ensure data flow
-      }
-    });
+   PATCH: history view toggle buttons (in-DOM buttons)
+════════════════════════════════════════════════════════ */
+['hv-week-btn', 'hv-month-btn'].forEach(id => {
+  const btn = document.getElementById(id);
+  if (btn && btn.dataset.histview) {
+    // Already bound
+  }
+});
 
-    console.log('[MyToDo] Dynamic renderer patches applied ✅');
-  });
-  function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
-
+console.log('[MyToDo] Dynamic renderer patches applied ✅');
 })(); // end patchDynamicRenderers
-  function urlBase64ToUint8Array(base64String) {
+
+
+/* ===== PUSH NOTIFICATION FINAL CLEAN ===== */
+
+function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
     .replace(/-/g, "+")
@@ -8677,11 +8668,13 @@ async function subscribeUser() {
 
     alert("✅ Notifications Enabled!");
   } catch (err) {
-    console.error(err);
+    console.error("ERROR:", err);
   }
 }
 
+/* GLOBAL ACCESS */
 window.subscribeUser = subscribeUser;
+
 </script>
 </body>
 </html>
