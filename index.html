@@ -1224,6 +1224,10 @@ body.offline-mode #lock-screen{ padding-top:38px; }
   </nav>
   <div class="sb-foot">
     <div class="sb-foot-actions">
+       <button onclick="subscribeUser()" class="nav-btn">
+    🔔 Notify
+  </button>
+
       <button class="sb-foot-icon-btn" id="settings-btn" aria-label="Settings">
         <span class="sfi-icon">⚙️</span>
         <span>Settings</span>
@@ -7621,6 +7625,7 @@ function checkStorageHealth(){
      Runs after DOMContentLoaded so every element exists.
 ═══════════════════════════════════════════════════════════════════════ -->
 <script>
+  
 (function bindEvents() {
   'use strict';
 
@@ -8620,6 +8625,7 @@ function checkStorageHealth(){
     /* ════════════════════════════════════════════════════════
        PATCH: history view toggle buttons (in-DOM buttons)
     ════════════════════════════════════════════════════════ */
+    
     ['hv-week-btn', 'hv-month-btn'].forEach(id => {
       const btn = document.getElementById(id);
       if (btn && btn.dataset.histview) {
@@ -8650,7 +8656,7 @@ async function subscribeUser() {
     applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
   });
 
-  await fetch("https://your-backend-url.com/subscribe", {
+  await fetch("https://todo-backend-tl1v.onrender.com/subscribe", {
     method: "POST",
     body: JSON.stringify(sub),
     headers: {
