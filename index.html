@@ -1751,6 +1751,446 @@ body.offline-mode #lock-screen{ padding-top:38px; }
   <div class="lock-msg" id="lock-msg" role="alert" aria-live="assertive"></div>
 </div>
 
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+//  🔐 AUTH-AWARE ACCOUNT CARD + 🔔 WEB PUSH SYSTEM
+//  Drop-in upgrade — no existing code touched
+// ═══════════════════════════════════════════════════════════════════════
+(function PushAndAuthUpgrade() {
+  'use strict';
+
+  // ── Configuration ────────────────────────────────────────────────────
+  const BACKEND = window.CONFIG && CONFIG.API_URL
+    ? CONFIG.API_URL
+    : 'https://todo-backend-tl1v.onrender.com';   // ← update if needed
+
+  // ── Token helpers (re-uses OfflineFirstSystem's __mytodo_jwt_v2) ─────
+  const getToken = () => {
+    try { return localStorage.getItem('__mytodo_jwt_v2'); } catch(_) { return null; }
+  };
+  const isLoggedIn = () => !!getToken();
+
+  // ── Auth-headers helper ───────────────────────────────────────────────
+  function authHeaders() {
+    const tok = getToken();
+    return {
+      'Content-Type': 'application/json',
+      ...(tok ? { 'Authorization': 'Bearer ' + tok } : {}),
+    };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  //  AUTH-AWARE ACCOUNT CARD
+  //  Injects Sign In / Logout button into Settings → Account section
+  // ──────────────────────────────────────────────────────────────────────
+  function buildAccountCard() {
+    const card = document.getElementById('settings-account-card');
+    if (!card) return;
+    card.innerHTML = '';
+
+    if (isLoggedIn()) {
+      // ── Logged-in state ────────────────────────────────────────────────
+      const userName = (window.userProfile && window.userProfile.name) || 'User';
+
+      // User info row
+      const infoRow = document.createElement('div');
+      infoRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 2px;margin-bottom:12px;border-bottom:1px solid var(--bdr);';
+      const ava = document.createElement('div');
+      ava.style.cssText = 'width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;';
+      ava.textContent = userName.charAt(0).toUpperCase();
+      const uinfo = document.createElement('div');
+      const unEl = document.createElement('div');
+      unEl.style.cssText = 'font-size:13px;font-weight:700;color:var(--t1);';
+      unEl.textContent = userName;
+      const syncEl = document.createElement('div');
+      syncEl.style.cssText = 'font-size:11px;color:#107c10;margin-top:1px;';
+      syncEl.textContent = '✅ Signed in — sync active';
+      uinfo.appendChild(unEl);
+      uinfo.appendChild(syncEl);
+      infoRow.appendChild(ava);
+      infoRow.appendChild(uinfo);
+      card.appendChild(infoRow);
+
+      // Push notification toggle row
+      const pushRow = document.createElement('div');
+      pushRow.className = 'set-row';
+      pushRow.style.marginBottom = '12px';
+      const pushInfo = document.createElement('div');
+      pushInfo.className = 'set-info';
+      const pushLbl = document.createElement('div');
+      pushLbl.className = 'set-lbl';
+      pushLbl.textContent = '🔔 Push Notifications';
+      const pushSub = document.createElement('div');
+      pushSub.className = 'set-sub';
+      pushSub.id = 'push-status-sub';
+      pushSub.textContent = 'Receive alerts even when app is closed';
+      pushInfo.appendChild(pushLbl);
+      pushInfo.appendChild(pushSub);
+      const pushBtn = document.createElement('button');
+      pushBtn.className = 'btn btnp';
+      pushBtn.id = 'push-toggle-btn';
+      pushBtn.style.cssText = 'font-size:12px;padding:5px 12px;flex-shrink:0;';
+      pushBtn.textContent = '🔔 Enable';
+      pushBtn.addEventListener('click', () => handlePushToggle(pushBtn, pushSub));
+      pushRow.appendChild(pushInfo);
+      pushRow.appendChild(pushBtn);
+      card.appendChild(pushRow);
+
+      // Update push button state
+      updatePushButtonState(pushBtn, pushSub);
+
+      // Change Password row
+      makeAccountActionRow(card, '🔑', 'Change Password', 'Update your account password', 'Change', 'var(--blue)', () => {
+        if (typeof closeSettingsModal === 'function') closeSettingsModal();
+        setTimeout(() => { if (typeof showAccountModal === 'function') showAccountModal('change-password'); }, 300);
+      });
+
+      // Logout button
+      const logoutRow = document.createElement('div');
+      logoutRow.className = 'set-row';
+      logoutRow.style.marginTop = '8px';
+      const logoutInfo = document.createElement('div');
+      logoutInfo.className = 'set-info';
+      const logoutLbl = document.createElement('div');
+      logoutLbl.className = 'set-lbl';
+      logoutLbl.textContent = '🚪 Sign Out';
+      const logoutSub = document.createElement('div');
+      logoutSub.className = 'set-sub';
+      logoutSub.textContent = 'Log out from this device';
+      logoutInfo.appendChild(logoutLbl);
+      logoutInfo.appendChild(logoutSub);
+      const logoutBtn = document.createElement('button');
+      logoutBtn.className = 'btn';
+      logoutBtn.style.cssText = 'font-size:12px;padding:5px 14px;background:#d13438;color:#fff;border:none;border-radius:6px;cursor:pointer;flex-shrink:0;font-family:inherit;font-weight:700;';
+      logoutBtn.textContent = 'Sign Out';
+      logoutBtn.addEventListener('click', handleLogout);
+      logoutRow.appendChild(logoutInfo);
+      logoutRow.appendChild(logoutBtn);
+      card.appendChild(logoutRow);
+
+    } else {
+      // ── Logged-out state ───────────────────────────────────────────────
+      const offRow = document.createElement('div');
+      offRow.className = 'set-row';
+      const info = document.createElement('div');
+      info.className = 'set-info';
+      const lbl = document.createElement('div');
+      lbl.className = 'set-lbl';
+      lbl.textContent = '🔐 Not signed in';
+      const sub = document.createElement('div');
+      sub.className = 'set-sub';
+      sub.textContent = 'Sign in to sync tasks across devices';
+      info.appendChild(lbl);
+      info.appendChild(sub);
+      const btn = document.createElement('button');
+      btn.className = 'btn btnp';
+      btn.style.cssText = 'font-size:12px;padding:5px 14px;flex-shrink:0;font-weight:700;';
+      btn.textContent = '🔐 Sign In';
+      btn.addEventListener('click', () => {
+        if (typeof closeSettingsModal === 'function') closeSettingsModal();
+        // Show the existing OfflineFirstSystem auth overlay
+        setTimeout(() => {
+          const authOverlay = document.getElementById('ofs-auth-overlay');
+          if (authOverlay) {
+            authOverlay.style.display = 'flex';
+          } else if (typeof OFS_Auth !== 'undefined') {
+            // Re-show auth by hiding offline mode flag
+            window.__ofsOfflineMode = false;
+            const Auth = { show: () => {
+              if (document.getElementById('ofs-auth-overlay')) return;
+              // Trigger the existing Auth.show() from OfflineFirstSystem
+              if (window._ofsAuth && typeof window._ofsAuth.show === 'function') {
+                window._ofsAuth.show();
+              }
+            }};
+            // Fallback: reload to trigger auth flow
+            if (typeof window.toast === 'function') window.toast('Redirecting to Sign In…');
+            setTimeout(() => location.reload(), 1200);
+          }
+        }, 300);
+      });
+      offRow.appendChild(info);
+      offRow.appendChild(btn);
+      card.appendChild(offRow);
+    }
+  }
+
+  // ── Helper: action row ────────────────────────────────────────────────
+  function makeAccountActionRow(card, icon, label, sub, btnText, btnColor, onClick) {
+    const row = document.createElement('div');
+    row.className = 'set-row';
+    row.style.marginBottom = '10px';
+    const info = document.createElement('div'); info.className = 'set-info';
+    const lbl  = document.createElement('div'); lbl.className  = 'set-lbl'; lbl.textContent = icon + ' ' + label;
+    const subEl = document.createElement('div'); subEl.className = 'set-sub'; subEl.textContent = sub;
+    info.appendChild(lbl); info.appendChild(subEl);
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.style.cssText = `font-size:12px;padding:5px 12px;background:${btnColor};color:#fff;border:none;flex-shrink:0;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;`;
+    btn.textContent = btnText;
+    btn.addEventListener('click', onClick);
+    row.appendChild(info); row.appendChild(btn);
+    card.appendChild(row);
+  }
+
+  // ── Logout handler ─────────────────────────────────────────────────────
+  async function handleLogout() {
+    if (!confirm('Sign out? Your tasks remain safely on the server.')) return;
+    if (typeof closeSettingsModal === 'function') closeSettingsModal();
+
+    // Revoke token on backend
+    const tok = getToken();
+    if (tok) {
+      try {
+        await fetch(BACKEND + '/api/auth/logout', {
+          method: 'POST',
+          headers: authHeaders(),
+        });
+      } catch(_) {}
+    }
+
+    // Clear token
+    try { localStorage.removeItem('__mytodo_jwt_v2'); } catch(_) {}
+
+    // Unsubscribe push if active
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await fetch(BACKEND + '/api/push/subscribe', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', ...(tok ? { 'Authorization': 'Bearer ' + tok } : {}) },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          });
+          await sub.unsubscribe();
+        }
+      }
+    } catch(_) {}
+
+    // Reset profile display
+    if (window.userProfile) {
+      window.userProfile.name  = 'Log In Kar Le Bhai';
+      window.userProfile.photo = null;
+      window.userProfile.emoji = '👤';
+      if (typeof window.applyProfile === 'function') window.applyProfile();
+    }
+
+    if (typeof window.toast === 'function') window.toast('👋 Signed out successfully.');
+
+    // Show auth overlay after short delay
+    setTimeout(() => {
+      window.__ofsOfflineMode = false;
+      // Force page reload to re-trigger auth flow cleanly
+      location.reload();
+    }, 1000);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  //  WEB PUSH SUBSCRIPTION SYSTEM
+  // ──────────────────────────────────────────────────────────────────────
+
+  let _vapidPublicKey = null;
+
+  // Convert base64 VAPID key to Uint8Array for pushManager.subscribe
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const output  = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
+    return output;
+  }
+
+  // Fetch VAPID public key from backend
+  async function getVapidPublicKey() {
+    if (_vapidPublicKey) return _vapidPublicKey;
+    try {
+      const res = await fetch(BACKEND + '/api/push/vapid-public-key', {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error('Could not fetch VAPID key');
+      const data = await res.json();
+      _vapidPublicKey = data.publicKey;
+      return _vapidPublicKey;
+    } catch(e) {
+      console.error('[Push] VAPID key fetch failed:', e);
+      return null;
+    }
+  }
+
+  // Update push button state based on current subscription
+  async function updatePushButtonState(btn, sub) {
+    if (!btn) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      btn.textContent = '❌ Not Supported';
+      btn.disabled = true;
+      if (sub) sub.textContent = 'Push notifications not supported in this browser';
+      return;
+    }
+    try {
+      const reg        = await navigator.serviceWorker.ready;
+      const existing   = await reg.pushManager.getSubscription();
+      const permState  = Notification.permission;
+
+      if (existing && permState === 'granted') {
+        btn.textContent = '🔕 Disable Push';
+        btn.style.background = '#faa800';
+        if (sub) sub.textContent = '✅ Active — you\'ll be notified even when app is closed';
+      } else if (permState === 'denied') {
+        btn.textContent = '🚫 Blocked';
+        btn.disabled = true;
+        if (sub) sub.textContent = 'Notifications blocked in browser settings';
+      } else {
+        btn.textContent = '🔔 Enable Push';
+        btn.style.background = 'var(--blue)';
+        if (sub) sub.textContent = 'Receive alerts even when the app is closed';
+      }
+    } catch(e) {
+      btn.textContent = '🔔 Enable Push';
+    }
+  }
+
+  // Handle push enable/disable toggle
+  async function handlePushToggle(btn, subEl) {
+    if (!isLoggedIn()) {
+      if (typeof window.toast === 'function') window.toast('⚠️ Sign in first to enable push notifications.');
+      return;
+    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      if (typeof window.toast === 'function') window.toast('❌ Push notifications not supported in this browser.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Processing…';
+
+    try {
+      const reg      = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+
+      if (existing) {
+        // ── Disable: unsubscribe ─────────────────────────────────────────
+        await fetch(BACKEND + '/api/push/subscribe', {
+          method: 'DELETE',
+          headers: authHeaders(),
+          body: JSON.stringify({ endpoint: existing.endpoint }),
+        });
+        await existing.unsubscribe();
+        if (typeof window.toast === 'function') window.toast('🔕 Push notifications disabled.');
+        if (subEl) subEl.textContent = 'Receive alerts even when the app is closed';
+        btn.textContent = '🔔 Enable Push';
+        btn.style.background = 'var(--blue)';
+        btn.disabled = false;
+        return;
+      }
+
+      // ── Enable: request permission then subscribe ─────────────────────
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        if (typeof window.toast === 'function') window.toast('🚫 Notification permission denied.');
+        btn.textContent = '🚫 Blocked';
+        btn.disabled = true;
+        return;
+      }
+
+      // Get VAPID public key from backend
+      const vapidKey = await getVapidPublicKey();
+      if (!vapidKey) {
+        if (typeof window.toast === 'function') window.toast('❌ Could not get push config from server.');
+        btn.textContent = '🔔 Enable Push';
+        btn.disabled = false;
+        return;
+      }
+
+      // Subscribe to push
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly:      true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      // Send subscription to backend
+      const res = await fetch(BACKEND + '/api/push/subscribe', {
+        method:  'POST',
+        headers: authHeaders(),
+        body:    JSON.stringify({ subscription: subscription.toJSON() }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Subscription failed on server');
+      }
+
+      if (typeof window.toast === 'function') window.toast('🔔 Push notifications enabled! You\'ll be notified even when the app is closed.');
+      if (subEl) subEl.textContent = '✅ Active — you\'ll be notified even when app is closed';
+      btn.textContent = '🔕 Disable Push';
+      btn.style.background = '#faa800';
+
+    } catch(e) {
+      console.error('[Push] toggle error:', e);
+      if (typeof window.toast === 'function') window.toast('❌ Push setup failed: ' + e.message);
+      btn.textContent = '🔔 Enable Push';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Send a push notification to self (for testing / task triggers) ────
+  window.sendSelfPush = async function(title, body, url) {
+    if (!isLoggedIn()) return;
+    try {
+      await fetch(BACKEND + '/api/push/send', {
+        method:  'POST',
+        headers: authHeaders(),
+        body:    JSON.stringify({
+          title: title || 'Task Reminder',
+          body:  body  || 'You have pending tasks!',
+          url:   url   || './',
+          tag:   'self-push',
+        }),
+      });
+    } catch(e) {
+      console.warn('[Push] sendSelfPush error:', e);
+    }
+  };
+
+  // ── Hook into openSettingsModal to rebuild account card every time ────
+  const _origOpenSettings = window.openSettingsModal;
+  window.openSettingsModal = function() {
+    if (typeof _origOpenSettings === 'function') _origOpenSettings.apply(this, arguments);
+    // Rebuild account card so it's always auth-aware
+    setTimeout(buildAccountCard, 60);
+  };
+
+  // ── Auto-init on page load ────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    // Request push permission when user is already logged in
+    // (non-intrusive — only runs if already subscribed or permission already granted)
+    if (isLoggedIn() && 'serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(async reg => {
+        const existing = await reg.pushManager.getSubscription().catch(() => null);
+        if (existing && Notification.permission === 'granted') {
+          // Re-send subscription to backend in case it was lost (e.g. server restart)
+          const vapidKey = await getVapidPublicKey().catch(() => null);
+          if (vapidKey) {
+            fetch(BACKEND + '/api/push/subscribe', {
+              method:  'POST',
+              headers: authHeaders(),
+              body:    JSON.stringify({ subscription: existing.toJSON() }),
+            }).catch(() => {});
+          }
+        }
+      }).catch(() => {});
+    }
+  });
+
+  // ── Expose for external use ────────────────────────────────────────────
+  window._pushSystem = { buildAccountCard, handlePushToggle, updatePushButtonState, handleLogout };
+
+  console.log('[PushAndAuthUpgrade] ✅ Loaded');
+})();
+</script>
+
 <!-- ═══ LOCK SETUP MODAL ═══ -->
 <div class="mo" id="lock-setup-modal" style="z-index:500;" role="dialog" aria-modal="true" aria-label="Setup lock">
   <div class="lock-screen" style="position:relative;inset:auto;border-radius:20px;max-width:360px;width:calc(100vw - 32px);padding:28px 20px;">
