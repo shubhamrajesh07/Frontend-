@@ -1683,6 +1683,9 @@ body.offline-mode #lock-screen{ padding-top:38px; }
       <div style="margin:6px 0 2px 0;">
         <button onclick="subscribeUser()" class="btn btnp" style="width:100%;padding:10px 0;font-size:13px;font-weight:700;">🔔 Enable Push Notifications</button>
       </div>
+      <div style="margin:6px 0 2px 0;">
+        <button onclick="subscribeUser()" class="btn btnp" style="width:100%;padding:10px 0;font-size:13px;font-weight:700;">🔔 Enable Push Notifications</button>
+      </div>
 
       <div class="set-section-title" style="margin-top:14px;">⏰ Reminder Notifications</div>
       <div class="set-card" id="settings-notif-card"></div>
@@ -1891,25 +1894,22 @@ body.offline-mode #lock-screen{ padding-top:38px; }
       btn.textContent = '🔐 Sign In';
       btn.addEventListener('click', () => {
         if (typeof closeSettingsModal === 'function') closeSettingsModal();
-        // Show the existing OfflineFirstSystem auth overlay
         setTimeout(() => {
-          const authOverlay = document.getElementById('ofs-auth-overlay');
-          if (authOverlay) {
-            authOverlay.style.display = 'flex';
-          } else if (typeof OFS_Auth !== 'undefined') {
-            // Re-show auth by hiding offline mode flag
-            window.__ofsOfflineMode = false;
-            const Auth = { show: () => {
-              if (document.getElementById('ofs-auth-overlay')) return;
-              // Trigger the existing Auth.show() from OfflineFirstSystem
-              if (window._ofsAuth && typeof window._ofsAuth.show === 'function') {
-                window._ofsAuth.show();
-              }
-            }};
-            // Fallback: reload to trigger auth flow
-            if (typeof window.toast === 'function') window.toast('Redirecting to Sign In…');
-            setTimeout(() => location.reload(), 1200);
+          // 1. If overlay already exists (hidden), just show it
+          const existing = document.getElementById('ofs-auth-overlay');
+          if (existing) { existing.style.display = 'flex'; return; }
+          // 2. Reset offline mode so auth can show
+          window.__ofsOfflineMode = false;
+          // 3. Try OFS_Auth (exposed by OfflineFirstSystem)
+          if (typeof OFS_Auth !== 'undefined' && typeof OFS_Auth.show === 'function') {
+            OFS_Auth.show(); return;
           }
+          // 4. Try window._ofsShowAuth (we will expose Auth.show below)
+          if (typeof window._ofsShowAuth === 'function') {
+            window._ofsShowAuth(); return;
+          }
+          // 5. Last resort: reload — boot() will call Auth.show() automatically
+          location.reload();
         }, 300);
       });
       offRow.appendChild(info);
@@ -3145,13 +3145,13 @@ function toggle(id){
 }
 
 function snapshotOnCompletion(date){
-  // ONLY update done count — never inflate due beyond what's in live tasks
   const liveDue=tasks.filter(t=>(t.due===date||t.origDue===date)).length;
   const liveDone=tasks.filter(t=>(t.due===date||t.origDue===date)&&t.done).length;
   const existing=progressHistory['day:'+date];
-  // due = max(existing snapshot due, live count) — prevents shrinking on page reload
+  // due = max(existing.due, liveDue) — never shrink due count (deletion-proof)
   const due=existing?Math.max(existing.due,liveDue):liveDue;
-  const done=liveDone;
+  // done = max(existing.done, liveDone) — never shrink done count either
+  const done=existing?Math.max(existing.done,liveDone):liveDone;
   const pct=due>0?Math.round(done/due*100):null;
   progressHistory['day:'+date]={date,due,done,pct,isStreak:pct!==null&&pct>=80};
   updateWeekMonthAgg(date,due,done,pct);
@@ -3340,7 +3340,9 @@ function onQAKeydown(e){
   // Handle Enter on both PC and mobile (key=Enter OR keyCode=13)
   if(e.key==='Enter'||e.keyCode===13){
     e.preventDefault(); // prevent cursor moving right on mobile
-    doQuickAdd();
+    // Use window.doQuickAdd if available (has sync wrapper), fallback to local
+    if(typeof window.doQuickAdd === 'function') window.doQuickAdd();
+    else doQuickAdd();
   }
 }
 
@@ -3353,9 +3355,13 @@ function doQuickAdd(){
   const list=lastUsedList.startsWith('__')?cat:lastUsedList;
   const pri=document.getElementById('qa-pri').value||lastUsedPri;
   const now=Date.now();
-  tasks.push({id:now,text,cat,priority:pri,due:document.getElementById('qa-due').value,done:false,starred:false,pinned:false,list,notes:'',createdAt:now,completedAt:null,reminderTime:null});
+  const dueVal=document.getElementById('qa-due').value;
+  tasks.push({id:now,text,cat,priority:pri,due:dueVal,done:false,starred:false,pinned:false,list,notes:'',createdAt:now,completedAt:null,reminderTime:null});
   freqMap[text]=(freqMap[text]||0)+1;
   logActivity(todayStr(),'added');
+  // Snapshot due count immediately so deleting before completion doesn't affect analytics
+  const forDate=dueVal||todayStr();
+  snapshotOnCompletion(forDate);
   lastUsedList=list; lastUsedPri=pri;
   document.getElementById('quick-add').value='';
   document.getElementById('ac-dropdown').classList.remove('open');
@@ -3435,9 +3441,12 @@ function addFromModal(){
   const now=Date.now();
   const reminderVal=document.getElementById('m-reminder').value;
   const reminderTime=reminderVal?new Date(reminderVal).toISOString():null;
-  tasks.push({id:now,text:n,cat:document.getElementById('m-cat').value,priority:document.getElementById('m-pri').value,due:document.getElementById('m-due').value,list:document.getElementById('m-list').value,notes:document.getElementById('m-notes').value.trim(),done:false,starred:false,pinned:document.getElementById('m-pin').checked,createdAt:now,reminderTime,completedAt:null});
+  const mDue=document.getElementById('m-due').value;
+  tasks.push({id:now,text:n,cat:document.getElementById('m-cat').value,priority:document.getElementById('m-pri').value,due:mDue,list:document.getElementById('m-list').value,notes:document.getElementById('m-notes').value.trim(),done:false,starred:false,pinned:document.getElementById('m-pin').checked,createdAt:now,reminderTime,completedAt:null});
   logActivity(todayStr(),'added');
   freqMap[n]=(freqMap[n]||0)+1;
+  // Snapshot due count on add so analytics stays intact even if task is deleted before completion
+  snapshotOnCompletion(mDue||todayStr());
   closeModal(); ne.value=''; document.getElementById('m-notes').value=''; document.getElementById('m-pin').checked=false; document.getElementById('m-reminder').value='';
   saveAll(); render(); updateDD();
   if(reminderTime) scheduleTaskReminders(); // schedule the new reminder
@@ -6977,28 +6986,30 @@ function checkStorageHealth(){
         if (!ok) return;
         const serverTodos = Array.isArray(data.tasks) ? data.tasks : [];
         if (!serverTodos.length) return;
-        Merge.applyConflict(serverTodos);
-        if (typeof window.saveAll === 'function') window.saveAll();
-        if (typeof window.render  === 'function') window.render();
+        Merge.applyConflict(serverTodos); // applyConflict now syncs tasks+window.tasks+saveAll+render
       } catch(e) { console.warn('[Sync] pullMerge failed:', e); }
     },
 
     _applyServerTasks(serverTodos) {
-      if (!Array.isArray(window.tasks)) return;
+      const allTasks = (typeof tasks !== 'undefined' ? tasks : null) || window.tasks || [];
+      if (!Array.isArray(allTasks)) return;
       serverTodos.forEach(st => {
         const sid = st._id || st.id;
-        const localIdx = window.tasks.findIndex(lt => lt.id == sid || lt._serverId == sid || lt.id == st.localId);
+        const localIdx = allTasks.findIndex(lt => lt.id == sid || lt._serverId == sid || lt.id == st.localId);
         if (localIdx >= 0) {
-          window.tasks[localIdx] = { ...window.tasks[localIdx], ...Merge.serverToLocal(st), synced: true };
-          UI.updateTaskDot(window.tasks[localIdx].id, 'synced');
+          Object.assign(allTasks[localIdx], Merge.serverToLocal(st), { synced: true });
+          UI.updateTaskDot(allTasks[localIdx].id, 'synced');
         }
       });
+      window.tasks = allTasks;
       if (typeof window.saveAll === 'function') window.saveAll();
     },
 
     _markAllSynced() {
-      if (!Array.isArray(window.tasks)) return;
-      window.tasks.forEach(t => { t.synced = true; UI.updateTaskDot(t.id, 'synced'); });
+      const allTasks = (typeof tasks !== 'undefined' ? tasks : null) || window.tasks || [];
+      if (!Array.isArray(allTasks)) return;
+      allTasks.forEach(t => { t.synced = true; UI.updateTaskDot(t.id, 'synced'); });
+      window.tasks = allTasks;
       if (typeof window.saveAll === 'function') window.saveAll();
     },
 
@@ -7079,7 +7090,13 @@ function checkStorageHealth(){
         const stLocal = this.serverToLocal(st);
         if (!local) {
           // Check for local duplicate by text (unsynced)
-          const dupIdx = window.tasks.findIndex(lt => !lt._serverId && lt.text === stLocal.text && !lt.synced);
+          // Match unsynced local task to deduplicate with server version
+          const dupIdx = window.tasks.findIndex(lt =>
+            !lt._serverId &&
+            lt.text === stLocal.text &&
+            (lt.synced === false || lt.synced == null) &&
+            Math.abs((lt.createdAt || lt.id) - (stLocal.createdAt || 0)) < 30000 // within 30 seconds
+          );
           if (dupIdx >= 0) {
             window.tasks[dupIdx] = { ...window.tasks[dupIdx], ...stLocal };
           } else {
@@ -7099,7 +7116,14 @@ function checkStorageHealth(){
         return serverMap.has(String(lt._serverId));
       });
 
-      if (typeof window.render === 'function') window.render();
+      // Sync back to local `tasks` variable (they must be the same array reference)
+      if (typeof tasks !== 'undefined') {
+        tasks.length = 0;
+        window.tasks.forEach(t => tasks.push(t));
+      }
+
+      if (typeof window.saveAll === 'function') window.saveAll();
+      if (typeof window.render  === 'function') window.render();
     },
   };
 
@@ -7251,6 +7275,9 @@ function checkStorageHealth(){
       if (el) { el.style.opacity = '0'; el.style.transition = 'opacity .25s'; setTimeout(() => el.remove(), 260); }
     },
   };
+
+  // Expose Auth.show so Settings Sign In button can call it from outside this IIFE
+  window._ofsShowAuth = () => Auth.show();
 
   /* ─── OFS_Auth — global auth handler ────────────────────────────────────── */
   window.OFS_Auth = {
@@ -7704,10 +7731,10 @@ function checkStorageHealth(){
        TASK MODAL
     ════════════════════════════════════════ */
     on(el('modal-cancel-btn'), 'click',   () => closeModal());
-    on(el('modal-create-btn'), 'click',   () => addFromModal());
+    on(el('modal-create-btn'), 'click',   () => { if(typeof window.addFromModal==='function') window.addFromModal(); else addFromModal(); });
     on(el('task-modal'),       'click',   (e) => { if (e.target === el('task-modal')) closeModal(); });
     /* Enter in task name field submits */
-    on(el('m-name'), 'keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addFromModal(); } });
+    on(el('m-name'), 'keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if(typeof window.addFromModal==='function') window.addFromModal(); else addFromModal(); } });
 
     /* ════════════════════════════════════════
        LIST MODAL
@@ -7876,9 +7903,15 @@ function checkStorageHealth(){
         const id = idMatch ? parseInt(idMatch[1]) : null;
         if (!id) return;
 
-        // All action buttons (data-act) are handled by patchDynamicRenderers delegation.
-        // Block them here so openTaskDetail doesn't fire as well.
-        if (e.target.closest('[data-act], .tacts, .actb, .tck, .tstar, .tpin')) return;
+        // .tck checkbox click — toggle task
+        if (e.target.closest('.tck') && id) {
+          if (typeof toggle === 'function') toggle(id);
+          return;
+        }
+
+        // .tpin and .tstar are handled by patchDynamicRenderers via data-act
+        // .actb, .tacts action buttons — patchDynamicRenderers handles via data-act
+        if (e.target.closest('[data-act], .tacts, .actb, .tstar, .tpin')) return;
 
         /* Generic task row click — open detail */
         if (!e.target.closest('button, input, select, a')) {
