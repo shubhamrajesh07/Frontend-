@@ -1681,10 +1681,7 @@ body.offline-mode #lock-screen{ padding-top:38px; }
       <div class="set-section-title" style="margin-top:14px;">🔔 Notification Permission</div>
       <div class="set-perm-card" id="set-perm-card"></div>
       <div style="margin:6px 0 2px 0;">
-        <button onclick="subscribeUser()" class="btn btnp" style="width:100%;padding:10px 0;font-size:13px;font-weight:700;">🔔 Enable Push Notifications</button>
-      </div>
-      <div style="margin:6px 0 2px 0;">
-        <button onclick="subscribeUser()" class="btn btnp" style="width:100%;padding:10px 0;font-size:13px;font-weight:700;">🔔 Enable Push Notifications</button>
+        <button onclick="subscribeUser()" class="btn btnp" id="main-push-btn" style="width:100%;padding:10px 0;font-size:13px;font-weight:700;">🔔 Enable Push Notifications</button>
       </div>
 
       <div class="set-section-title" style="margin-top:14px;">⏰ Reminder Notifications</div>
@@ -8637,28 +8634,108 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
-const PUBLIC_VAPID_KEY = "BE5X--SkMy4A3OIGEVonAmNJW4hlz88cyi189addn43LKP6x26vpXBVEXTomLCr0fkzeq_n1LbgNnrcrPIdoC7c";
-
 async function subscribeUser() {
+  const btn = document.getElementById('main-push-btn');
+  const showMsg = (msg) => { if (typeof window.toast === 'function') window.toast(msg); else alert(msg); };
+
+  // Check browser support
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    showMsg('❌ Push notifications not supported in this browser. Try Chrome or Edge.');
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Setting up…'; }
+
   try {
-    const reg = await navigator.serviceWorker.register("/sw.js");
+    // Step 1: Request notification permission
+    const permission = await Notification.requestPermission();
+    if (permission === 'denied') {
+      showMsg('🚫 Notifications blocked. Please allow them in your browser settings, then try again.');
+      if (btn) { btn.disabled = false; btn.textContent = '🚫 Blocked — check browser settings'; }
+      return;
+    }
+    if (permission !== 'granted') {
+      showMsg('⚠️ Notification permission not granted.');
+      if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Push Notifications'; }
+      return;
+    }
 
-    const sub = await reg.pushManager.subscribe({
+    // Step 2: Get service worker registration
+    let reg;
+    try {
+      reg = await navigator.serviceWorker.ready;
+    } catch(e) {
+      reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+      await navigator.serviceWorker.ready;
+    }
+
+    // Step 3: Check if already subscribed
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      showMsg('✅ Push notifications already enabled!');
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Already Enabled'; }
+      return;
+    }
+
+    // Step 4: Get VAPID key — try backend first, fallback to hardcoded
+    let vapidKey = null;
+    const BACKEND_URL = (typeof BACKEND !== 'undefined' ? BACKEND : 'https://todo-backend-tl1v.onrender.com');
+    try {
+      const vRes = await fetch(BACKEND_URL + '/api/push/vapid-public-key');
+      if (vRes.ok) { const vData = await vRes.json(); vapidKey = vData.publicKey || vData.key || vData; }
+    } catch(e) {}
+    if (!vapidKey) vapidKey = 'BE5X--SkMy4A3OIGEVonAmNJW4hlz88cyi189addn43LKP6x26vpXBVEXTomLCr0fkzeq_n1LbgNnrcrPIdoC7c';
+
+    // Step 5: Subscribe
+    const subscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
 
-    await fetch("https://todo-backend-tl1v.onrender.com/subscribe", {
-      method: "POST",
-      body: JSON.stringify(sub),
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
+    // Step 6: Send to backend — try auth endpoint first, fallback to legacy
+    const subJSON = subscription.toJSON();
+    const tok = (typeof Tok !== 'undefined' && Tok.has()) ? Tok.get() : null;
+    let saved = false;
 
-    alert("✅ Notifications Enabled!");
+    if (tok) {
+      try {
+        const r = await fetch(BACKEND_URL + '/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+          body: JSON.stringify({ subscription: subJSON }),
+        });
+        if (r.ok) saved = true;
+      } catch(e) {}
+    }
+
+    if (!saved) {
+      // Legacy fallback endpoint
+      try {
+        const r = await fetch(BACKEND_URL + '/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(subJSON),
+        });
+        if (r.ok) saved = true;
+      } catch(e) {}
+    }
+
+    if (saved) {
+      showMsg('🔔 Push notifications enabled! You will be notified even when the app is closed.');
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Push Notifications Enabled'; btn.style.background = '#107c10'; }
+    } else {
+      // Subscribed locally but backend save failed
+      showMsg('⚠️ Notifications enabled on this device but could not save to server. You may not receive remote push alerts.');
+      if (btn) { btn.disabled = false; btn.textContent = '⚠️ Partially Enabled'; }
+    }
+
   } catch (err) {
-    console.error("ERROR:", err);
+    console.error('[Push] subscribeUser error:', err);
+    const msg = err.message || String(err);
+    if (msg.includes('permission')) showMsg('🚫 Permission denied. Allow notifications in browser settings.');
+    else if (msg.includes('network') || msg.includes('fetch')) showMsg('❌ Network error. Check your connection and try again.');
+    else showMsg('❌ Could not enable notifications: ' + msg);
+    if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable Push Notifications'; }
   }
 }
 
