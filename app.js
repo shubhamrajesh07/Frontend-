@@ -6781,12 +6781,16 @@ async function subscribeUser() {
 
     // Step 4: Get VAPID key — try backend first, fallback to hardcoded
     let vapidKey = null;
-    const BACKEND_URL = (typeof BACKEND !== 'undefined' ? BACKEND : 'https://todo-backend-tl1v.onrender.com');
+    const BACKEND_URL = CONFIG.API_URL;
     try {
       const vRes = await fetch(BACKEND_URL + '/api/push/vapid-public-key');
       if (vRes.ok) { const vData = await vRes.json(); vapidKey = vData.publicKey || vData.key || vData; }
     } catch(e) {}
-    if (!vapidKey) vapidKey = 'BE5X--SkMy4A3OIGEVonAmNJW4hlz88cyi189addn43LKP6x26vpXBVEXTomLCr0fkzeq_n1LbgNnrcrPIdoC7c';
+    if (!vapidKey) {
+      console.warn('[Push] Could not fetch VAPID key from backend. Push notifications unavailable.');
+      showToast('Push setup failed — please try again later.', 'error');
+      return;
+    }
 
     // Step 5: Subscribe
     const subscription = await reg.pushManager.subscribe({
